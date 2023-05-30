@@ -2,18 +2,20 @@
     import {Route} from 'svelte-router-spa';
     import {date_format} from '../utils.js';
     import {Tab, Tabs} from 'carbon-components-svelte';
+    import {getContext} from 'svelte';
 
     const tabs = [
         ['/att', 'Attendance'],
         ['/settings', 'Settings'],
     ];
 
+    const toast = getContext('toast');
+    const app_settings = getContext('app_settings');
+
     export let currentRoute;
-    export let params = {};
     let selected;
 
     const async_toast_err = ({title, timeout = 5000})=>reason=>{
-        const {toast} = params;
         toast.set({
             kind: 'error',
             timeout,
@@ -36,6 +38,6 @@
             <Tab {label} {href}/>
         {/each}
     </Tabs>
-    <Route {currentRoute} params={{...params, async_toast_err}}/>
+    <Route {currentRoute} params={{async_toast_err, app_settings}}/>
 </div>
 

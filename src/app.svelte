@@ -6,13 +6,14 @@
     import Settings from './routes/settings.svelte';
     import {writable} from 'svelte/store';
     import MainLayout from './layout/main.svelte';
-    import {use_reactive} from './lib/store.js';
+    import {use_reactive_ctx} from './lib/store.js';
+    import {setContext} from 'svelte';
 
-    let app_settings = use_reactive('app_settings', {
+    let app_settings = use_reactive_ctx('app_settings', {
         theme: 'g10'
     }, 'theme'.split(' '));
     let toast = writable({});
-    const params = {app_settings, toast};
+    setContext('toast', toast);
     const layout = MainLayout;
     /** @type {Route[]}*/
     const routes = [
