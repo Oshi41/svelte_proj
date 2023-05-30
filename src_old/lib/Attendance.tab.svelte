@@ -3,7 +3,7 @@
         SkeletonPlaceholder, FormLabel, TextInputSkeleton,
         CodeSnippet, Select, SelectItem, Toggle, TooltipDefinition, NumberInput, ToggleSkeleton
     } from 'carbon-components-svelte';
-    import {dur2str, mls, date_format, str2dur} from '../utils.js';
+    import {dur2str, mls, date_format, str2dur} from '../../src/utils.js';
     import {use_reactive_ctx, on_catch} from './ctx.js';
 
     /**
@@ -77,22 +77,24 @@
      * @return {Promise<void>}
      */
     const request_login = async(endpoint)=>{
-        let url = 'http://tools.brightdata.com/slack/postmessage';
+        let url = `http://web.brightdata.com/att/daily/${endpoint}?login=${$attendance.username}`;
+        let now = new Date();
         let body = {
-            to: '@'+$attendance.username,
-            text: endpoint
+            from: 'home',
+            target: $attendance.username,
+            login: $attendance.username,
+            offset: now.getTimezoneOffset(),
+            time: date_format(now, 'yyyy-MM-dd hh:mm:ss'),
         };
         let res = await fetch(url, {
             method: 'POST',
             body: JSON.stringify(body),
-            mode: 'no-cors'
         });
-        let txt = await res.text()
-        if (!res.ok || txt == 'err')
-            throw new Error(txt);
+        if (!res.ok)
+            throw new Error(await res.text());
 
         await request_attendance();
-    }
+    };
     let month_salary, salary, tootip, add_time = 0, log_async;
     $: {
         let {tooltip: _tooltip} = currencies.get($attendance.currency);
