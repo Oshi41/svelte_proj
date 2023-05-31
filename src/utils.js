@@ -82,6 +82,19 @@ export const clamp = (min, val, max) => (val < min ? min : val > max ? max : val
 
 export const sleep = (mls) => new Promise((resolve) => setTimeout(() => resolve(true), mls));
 
+export const today = (is_utc = false)=>{
+	let now = new Date();
+	return is_utc ? new Date(Date.UTC(
+		now.getUTCFullYear(),
+		now.getUTCMonth(),
+		now.getUTCDate()
+	)) : new Date(
+		now.getFullYear(),
+		now.getMonth(),
+		now.getDate()
+	);
+}
+
 /**
  * @param source {any}
  * @param prop {any}

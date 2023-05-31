@@ -1,6 +1,7 @@
 <script>
     // region Requests
-    import {str2dur, date_format, mls} from '../utils.js';
+    import {str2dur, date_format, mls, q2str, today} from '../utils.js';
+    import {wbm_fetch} from '../gluon_utils.js';
 
     /**
      * Requests all currencies
@@ -27,8 +28,19 @@
         let res = await fetch('http://web.brightdata.com/att/daily/status?login='+username);
         if (!res.ok)
             throw new Error(await res.text());
-        let {hours: {total}, online} = await res.json();
-        return {online, today: str2dur(total), date: new Date()};
+        let {hours: {total}, online, history} = await res.json();
+        let first_checkin = history.filter(x=>{
+            if (!x.is_in)
+                return false;
+            let d = new Date(x.att_time), now = new Date(), f = 'yyyy-MM-dd';
+            return date_format(d, f)==date_format(now, f);
+        }).pop();
+        if (first_checkin)
+            first_checkin = new Date(first_checkin.att_time);
+        return {
+            online, today: str2dur(total), date: new Date(),
+            ...(first_checkin&&{first_checkin})
+        };
     }
 
     /**
@@ -67,15 +79,46 @@
             offset: now.getTimezoneOffset(),
             time: date_format(now, 'yyyy-MM-dd hh:mm:ss'),
         };
-        let res = await fetch(url, {
+        let res = await wbm_fetch(url, {
             method: 'POST',
             body: JSON.stringify(body),
         });
         if (!res.ok)
             throw new Error(await res.text());
-
-        return await request_today_attendance(username);
+        return true;
     };
+
+    /**
+     * @param who {string} username
+     * @param work_start {Date}
+     * @return {Promise<Map<string, CVSFile>>}
+     */
+    const request_commits = async(who, work_start)=>{
+        let q = {
+            sortby: 'date',
+            from_date: date_format(work_start, 'yyyy-MM-dd hh:mm:ss'),
+            who,
+            limit: 100,
+        };
+        let url = 'http://cvs.brightdata.com:3343/cvs.json'+q2str(q);
+        let commits = await wbm_fetch(url);
+        let result = new Map();
+        for (let {ad, rm, description, path, prevrevision: r1, revision: r2, ci_when} of commits){
+            let files = result.get(description)
+            if (!files){
+                files = [];
+                result.set(description, files);
+            }
+            q = {r1, r2};
+            files.push({
+                link: 'http://cvs.brightdata.com/cvs/'+path+q2str(q),
+                text: path,
+                when: new Date(ci_when),
+                meta: `+${ad} / -${rm}`,
+            })
+        }
+        return result;
+    }
 
     const is_today = date=>date_format(new Date(), 'yyyy-MM-dd')==date;
 
@@ -90,6 +133,15 @@
      * @property {number} dollar_per_hour (save in local storage)
      * @property {Date} date
      * @property {string} timesheet_date (save in local storage)
+     * @property {Date} first_checkin
+     */
+
+    /**
+     * @typedef {Object} CVSFile
+     * @property {string} link
+     * @property {string} text
+     * @property {Date} when
+     * @property {string} meta
      */
 
     // endregion
@@ -131,7 +183,7 @@
     const currency = use_reactive_ctx('currency', {},
         ['date', ...Array.from(currencies.keys())]);
 
-    let add_time = 0, month_salary, salary, currency_name, loading, promise;
+    let add_time = 0, month_salary, salary, currency_name, loading, promise, commits;
     $: {
         currency_name = currencies.get($attendance.currency).tooltip;
         let modifier = $currency[$attendance.currency];
@@ -148,7 +200,7 @@
             }
         };
         salary = calculate($attendance.today);
-        month_salary = calculate($attendance.month + $attendance.today);
+        month_salary = calculate($attendance.month+$attendance.today);
         loading = promise!=null|| !$attendance.username|| !Number.isFinite($attendance.today)
             || !Number.isFinite($attendance.month);
     }
@@ -157,10 +209,21 @@
             add_time = new Date()-$attendance.date;
     }, 1000);
 
+    const toggle = ()=>{
+        promise = send_login($attendance.username, $attendance.online)
+            .catch(async_toast_err('Login/logout error'))
+            .finally(()=>request_today_attendance($attendance.username))
+            .then(v=>attendance.update(src=>Object.assign(src, v)))
+            .catch(async_toast_err('Today attendance fetch error'))
+            .finally(x=> promise = null);
+    };
+
     let requests = [
         request_today_attendance($attendance.username)
         .then(v=>attendance.update(src=>Object.assign(src, v)))
-        .catch(async_toast_err('Today attendance fetch error'))
+        .then(()=>request_commits($attendance.username, $attendance.first_checkin || today()))
+        .then(r=>commits = r)
+        .catch(async_toast_err('Today attendance fetch error')),
     ];
     if (!is_today($attendance.timesheet_date)){
         requests.push(request_this_month_attendance($attendance.username)
@@ -183,10 +246,11 @@
     <div style="align-items: center; display: flex; flex-direction: row; width: 480px">
         <FormLabel style="vertical-align: baseline">User info</FormLabel>
         {#if (!loading)}
-            <Toggle bind:toggled={$attendance.online} style="align-items: end" labelA="Offline" labelB="Online"/>
+            <Toggle toggled={$attendance.online} style="align-items: end" labelA="Offline" labelB="Online"
+                    on:toggle={toggle}/>
         {/if}
     </div>
-    <div style="display: flex; flex-direction: row; align-items: center; gap: 1em; margin-bottom: 2em">
+    <div style="display: flex; flex-direction: row; align-items: center; gap: 1em">
         {#if (loading)}
             <SkeletonPlaceholder style="width: 8em; border-radius: 50%"/>
             <TextInputSkeleton hideLabel/>
@@ -197,7 +261,7 @@
             <h1>{$attendance.username}</h1>
         {/if}
     </div>
-    <FormLabel>Working hours</FormLabel>
+    <FormLabel style="margin-top: 2em">Working hours</FormLabel>
     <div style="padding-left: 1em">
         <div style="display: flex; flex-direction: row; gap: 1em; align-items: end; margin-bottom: 1em">
             <div>
@@ -237,6 +301,16 @@
                              label="Salary per hour ($)" style="max-width: 50px; padding-right: 0"/>
             {/if}
         </div>
+    </div>
+    <FormLabel style="margin-top: 2em">Today commits</FormLabel>
+    <div style="padding-left: 1em">
+        {#if (commits?.size>0)}
+            {#each Array.from(commits.entries()) as [descr, files]}
+
+            {/each}
+        {:else}
+            No commits
+        {/if}
     </div>
 </div>
 

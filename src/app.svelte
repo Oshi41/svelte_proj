@@ -4,10 +4,12 @@
     import {Router} from 'svelte-router-spa';
     import Attendance from './routes/attendance.svelte';
     import Settings from './routes/settings.svelte';
+    import Auth from './routes/auth.svelte';
     import {writable} from 'svelte/store';
     import MainLayout from './layout/main.svelte';
     import {use_reactive_ctx} from './lib/store.js';
     import {setContext} from 'svelte';
+    import {is_authorized} from './gluon_utils.js';
 
     let app_settings = use_reactive_ctx('app_settings', {
         theme: 'g10'
@@ -15,21 +17,35 @@
     let toast = writable({});
     setContext('toast', toast);
     const layout = MainLayout;
+    const auth_redirect = {
+        onlyIf: {
+            guard: is_authorized,
+            redirect: '/auth',
+        }
+    }
+
     /** @type {Route[]}*/
     const routes = [
         {
-            name: '/',
-            redirectTo: '/att'
+            name: 'auth',
+            component: Auth
         },
         {
-            name: '/att',
+            name: 'att',
             component: Attendance,
             layout,
+            ...auth_redirect,
         },
         {
-            name: '/settings',
+            name: 'settings',
             component: Settings,
             layout,
+            ...auth_redirect,
+        },
+        {
+            name: '/',
+            redirectTo: 'att',
+            ...auth_redirect,
         },
     ];
 </script>
