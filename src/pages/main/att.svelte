@@ -158,15 +158,19 @@
         TooltipDefinition,
         NumberInput,
         NumberInputSkeleton,
-        SelectSkeleton
+        SelectSkeleton, TileGroup, RadioTile
     } from 'carbon-components-svelte';
 
     import {lc_json_writable_store} from '../../lib/svelte_utils.js';
     import {dur2str} from '../../utils.js';
+    import {get_username} from '../../lib/gluon_lib.js';
     import {getContext} from 'svelte';
     import Clock from '../../components/clock.svelte';
 
     const {async_toast_err} = getContext('toast');
+    const app_settings = getContext('app_settings');
+    const base_offsets = [{offset: 0, name: 'UTC'}, {offset: 60*3, name: 'Office time'}];
+    let time_zones = [...base_offsets];
 
     const currencies = new Map([
         ['$', {code: 'usd', tooltip: 'Dollar'}],
@@ -178,7 +182,7 @@
     ]);
     /** @type {Writable<Attendance>}*/
     const attendance = lc_json_writable_store('attendance', {
-        username: 'arkadii',
+        username: '',
         dollar_per_hour: 1,
         currency: '$',
     }, 'username month currency dollar_per_hour timesheet_date');
@@ -206,10 +210,18 @@
         loading = promise!=null|| !$attendance.username|| !Number.isFinite($attendance.today)
             || !Number.isFinite($attendance.month);
     }
+    $: {
+        let arr = [...base_offsets];
+        let offset = $app_settings.local_offset;
+        if (offset)
+            arr.push({offset, name: 'Local time'});
+        time_zones = [...arr];
+    }
     setInterval(()=>{
         if ($attendance.online&&$attendance.date)
             add_time = new Date()-$attendance.date;
     }, 1000);
+
 
     const toggle = ()=>{
         promise = send_login($attendance.username, $attendance.online)
@@ -227,6 +239,13 @@
         .then(r=>commits = r)
         .catch(async_toast_err('Today attendance fetch error')),
     ];
+    if (!$attendance.username)
+    {
+        requests.push(get_username()
+            .then(v=>$attendance.username = v)
+            .catch(async_toast_err('Err during get username'))
+        );
+    }
     if (!is_today($attendance.timesheet_date)){
         requests.push(request_this_month_attendance($attendance.username)
             .then(v=>attendance.update(src=>Object.assign(src, v)))
@@ -260,8 +279,9 @@
             <img style="width: 8em; height: 8em; object-fit: cover; border-radius: 50%"
                  src={`http://fs.luminati.io/hr/pictures/login/${$attendance.username}.jpeg`}
                  alt={$attendance.username}/>
-            <h1 style="width: 100%">{$attendance.username}</h1>
-            <Clock style="width: 12em"/>
+            <h1 style="width: 45%">{$attendance.username}</h1>
+            {@const size = 10}
+            <Clock style="width: {size}em; height: {size}em" {time_zones}/>
         {/if}
     </div>
     <FormLabel style="margin-top: 2em">Working hours</FormLabel>

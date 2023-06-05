@@ -17,13 +17,6 @@ export const is_authorized_async = async()=>{
 };
 
 /**
- * Unstable sync implementation.
- * Ideally move to async version
- * @type {boolean}
- */
-export const is_authorized = ()=>sp(is_authorized_async());
-
-/**
  * Send with auth
  * @param input {RequestInfo | URL}
  * @param init? {RequestInit}
