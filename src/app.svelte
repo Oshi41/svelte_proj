@@ -1,64 +1,50 @@
 <script>
     import 'carbon-components-svelte/css/all.css';
     import {Theme, ToastNotification} from 'carbon-components-svelte';
-    import {Router} from 'svelte-router-spa';
-    import Attendance from './routes/attendance.svelte';
-    import Settings from './routes/settings.svelte';
-    import Auth from './routes/auth.svelte';
-    import {writable} from 'svelte/store';
-    import MainLayout from './layout/main.svelte';
-    import {use_reactive_ctx} from './lib/store.js';
+    import {Router} from 'yrv';
     import {setContext} from 'svelte';
-    import {is_authorized} from './gluon_utils.js';
+    import {writable} from 'svelte/store';
+    import Route from './components/route.svelte';
+    import {date_format} from './utils.js';
+    import {lc_json_writable_store} from './lib/svelte_utils.js';
 
-    let app_settings = use_reactive_ctx('app_settings', {
-        theme: 'g10'
-    }, 'theme'.split(' '));
-    let toast = writable({});
-    setContext('toast', toast);
-    const layout = MainLayout;
-    const auth_redirect = {
-        onlyIf: {
-            guard: is_authorized,
-            redirect: '/auth',
-        }
-    }
-
-    /** @type {Route[]}*/
-    const routes = [
-        {
-            name: 'auth',
-            component: Auth
+    const toast = writable({});
+    setContext('toast', {
+        async_toast_err: (title, timeout = 5000)=>reason=>{
+            $toast = {
+                kind: 'error',
+                timeout,
+                title,
+                subtitle: reason?.message||reason.toString(),
+            }
         },
-        {
-            name: 'att',
-            component: Attendance,
-            layout,
-            ...auth_redirect,
+        make_err: (title, subtitle, timeout = 5000)=>{
+            $toast = {
+                kind: 'error',
+                timeout,
+                title,
+                subtitle,
+            }
         },
-        {
-            name: 'settings',
-            component: Settings,
-            layout,
-            ...auth_redirect,
-        },
-        {
-            name: '/',
-            redirectTo: 'att',
-            ...auth_redirect,
-        },
-    ];
+    });
+    let app_settings = lc_json_writable_store('app_settings', {
+        theme: 'g80',
+    }, 'all');
 </script>
 <Theme bind:theme={$app_settings.theme}/>
 
-<Router {routes} params={{app_settings, toast}}/>
+<Router>
+    <Route path="/auth" component={import('./pages/auth.svelte')}/>
+    <Route path="/main" component={import('./pages/main.svelte')}/>
+</Router>
 
 {#key $toast}
     {#if (!!Object.keys($toast).length)}
         {@const {
-            kind, lowContrast, timeout, title, subtitle, caption,
+            kind, lowContrast, timeout, title, subtitle,
             hideCloseButton, fullWidth
         } = $toast}
+        {@const caption = date_format(new Date(), 'HH:mm:ss.zzz')+' UTC'}
         <ToastNotification kind={kind}
                            lowContrast={lowContrast}
                            timeout={timeout}
@@ -70,3 +56,4 @@
         />
     {/if}
 {/key}
+

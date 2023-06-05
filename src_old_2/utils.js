@@ -173,18 +173,6 @@ export const select_recursive_obj = (obj, get_children_fn = Object.values())=>{
     ];
 };
 
-export const is_store = ctx=>{
-    return typeof ctx?.subscribe=='function';
-};
-
-export const skip_fn = (fn, skip = 0)=>(...args)=>{
-    if (skip>0){
-        skip--;
-    } else{
-        fn(...args);
-    }
-}
-
 export class WeakSet{
     /**@type {WeakRef[]}*/
     all_refs = [];

@@ -32,3 +32,14 @@ export const is_authorized = ()=>sp(is_authorized_async());
 export const wbm_fetch = async(input, init)=>{
     throw new Error('not implemented');
 }
+
+/**
+ * Returns all zon dirs with brief meta
+ * @return {Promise<[]>}
+ */
+export const get_zon_dirs = async()=>{
+    return [
+        {name: '.zon'},
+        {name: 'zon1'},
+    ]
+}

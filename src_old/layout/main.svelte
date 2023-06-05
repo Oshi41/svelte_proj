@@ -1,49 +1,47 @@
 <script>
-    import {Tabs, Tab, ToastNotification} from 'carbon-components-svelte';
-    import {Route, navigateTo, routeIsActive} from 'svelte-router-spa';
-    import {last_toast_store} from '../lib/ctx.js';
+    import {Route} from 'svelte-router-spa';
+    import {setContext} from 'svelte';
+    import {writable} from 'svelte/store';
+    import {ToastNotification} from 'carbon-components-svelte';
+    import {date_format} from '../utils.js';
 
-    const tabs = [
-        {label: 'Attendance', ref: '/att'},
-        {label: 'Settings', ref: '/settings'},
-    ];
-    let selected = 0;
     export let currentRoute;
-    export let params = {};
-    $: {
-        let cur_path = tabs[selected].ref;
-        if (!routeIsActive(cur_path))
-            navigateTo(cur_path, 'en', true);
-    }
+    export let params;
+
+    let toast = writable({});
+
+    const promise_err_toast = ({title, timeout = 5000})=> reason=>{
+        $toast = {
+            kind: 'error',
+            timeout,
+            caption: date_format(new Date(), 'hh:mm:ss.zzz'),
+            subtitile: reason.message || reason.toString(),
+            title
+        };
+    };
+    setContext('toast', {
+        promise_err_toast
+    });
 </script>
 
-<main>
-    <div style="padding: 1em">
-        <Tabs bind:selected>
-            {#each tabs as {label}}
-                <Tab label={label}/>
-            {/each}
-            <svelte:fragment slot="content">
-                <Route {currentRoute} {params}/>
-            </svelte:fragment>
-        </Tabs>
-        {#key $last_toast_store}
-            {#if (!!Object.keys($last_toast_store).length)}
-                {@const {
-                    kind, lowContrast, timeout, title, subtitle, caption,
-                    hideCloseButton, fullWidth
-                } = $last_toast_store}
-                <ToastNotification kind={kind}
-                                   lowContrast={lowContrast}
-                                   timeout={timeout}
-                                   title={title}
-                                   subtitle={subtitle}
-                                   caption={caption}
-                                   hideCloseButton={hideCloseButton}
-                                   fullWidth={fullWidth}
+<div style="padding: 1em">
+    <Route {currentRoute} {params} />
+</div>
 
-                />
-            {/if}
-        {/key}
-    </div>
-</main>
+{#key $toast}
+    {#if (!!Object.keys($toast).length)}
+        {@const {
+            kind, lowContrast, timeout, title, subtitle, caption,
+            hideCloseButton, fullWidth
+        } = $toast}
+        <ToastNotification kind={kind}
+                           lowContrast={lowContrast}
+                           timeout={timeout}
+                           title={title}
+                           subtitle={subtitle}
+                           caption={caption}
+                           hideCloseButton={hideCloseButton}
+                           fullWidth={fullWidth}
+        />
+    {/if}
+{/key}

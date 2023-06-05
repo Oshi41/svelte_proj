@@ -1,7 +1,7 @@
 <script>
     // region Requests
-    import {str2dur, date_format, mls, q2str, today} from '../utils.js';
-    import {wbm_fetch} from '../gluon_utils.js';
+    import {str2dur, date_format, mls, q2str, today} from '../../utils.js';
+    import {wbm_fetch} from '../../lib/gluon_lib.js';
 
     /**
      * Requests all currencies
@@ -160,11 +160,11 @@
         NumberInputSkeleton,
         SelectSkeleton
     } from 'carbon-components-svelte';
-    import {use_reactive_ctx} from '../lib/store.js';
-    import {dur2str} from '../utils.js';
+    import {lc_json_writable_store} from '../../lib/svelte_utils.js';
+    import {dur2str} from '../../utils.js';
+    import {getContext} from 'svelte';
 
-    export let params;
-    const {async_toast_err} = params;
+    const {async_toast_err} = getContext('toast');
 
     const currencies = new Map([
         ['$', {code: 'usd', tooltip: 'Dollar'}],
@@ -175,12 +175,12 @@
         ['¥', {code: 'cny', tooltip: 'Yuan'}],
     ]);
     /** @type {Writable<Attendance>}*/
-    const attendance = use_reactive_ctx('attendance', {
+    const attendance = lc_json_writable_store('attendance', {
         username: 'arkadii',
         dollar_per_hour: 1,
         currency: '$',
-    }, 'username month currency dollar_per_hour timesheet_date'.split(' '));
-    const currency = use_reactive_ctx('currency', {},
+    }, 'username month currency dollar_per_hour timesheet_date');
+    const currency = lc_json_writable_store('currency', {},
         ['date', ...Array.from(currencies.keys())]);
 
     let add_time = 0, month_salary, salary, currency_name, loading, promise, commits;
@@ -211,11 +211,11 @@
 
     const toggle = ()=>{
         promise = send_login($attendance.username, $attendance.online)
-            .catch(async_toast_err('Login/logout error'))
-            .finally(()=>request_today_attendance($attendance.username))
-            .then(v=>attendance.update(src=>Object.assign(src, v)))
-            .catch(async_toast_err('Today attendance fetch error'))
-            .finally(x=> promise = null);
+        .catch(async_toast_err('Login/logout error'))
+        .finally(()=>request_today_attendance($attendance.username))
+        .then(v=>attendance.update(src=>Object.assign(src, v)))
+        .catch(async_toast_err('Today attendance fetch error'))
+        .finally(x=> promise = null);
     };
 
     let requests = [

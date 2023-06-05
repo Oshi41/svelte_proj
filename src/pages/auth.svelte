@@ -1,11 +1,12 @@
 <script>
-    import {Button, PasswordInput, TextInput, TextInputSkeleton, ToastNotification} from 'carbon-components-svelte';
-    import {navigateTo} from 'svelte-router-spa';
-    import {get_username, is_authorized_async, wbm_fetch} from '../gluon_utils.js';
+    import {Button, PasswordInput, TextInput, TextInputSkeleton} from 'carbon-components-svelte';
+    import {navigateTo} from 'yrv';
+    import {get_username, is_authorized_async, wbm_fetch} from '../lib/gluon_lib.js';
     import {q2str} from '../utils.js';
+    import {getContext} from 'svelte';
 
     let login, pass, promise, warn = {}, toast;
-    const auth = async ()=>{
+    const auth = async()=>{
         let q = {login, passwd: pass};
         let res = await wbm_fetch('http://web.brightdata.com/auth'+q2str(q), {
             method: 'POST'
@@ -28,14 +29,19 @@
         .finally(()=>promise = null);
     };
 
+    const {make_err} = getContext('toast');
+
     promise = get_username()
-        .then(name=>login = name)
-        .then(is_authorized_async)
-        .then(value=>{
-            if (value)
-                navigateTo('/');
-        }).catch(e=>toast = 'Inner error')
-        .finally(()=>promise = null);
+    .then(name=>login = name)
+    .then(is_authorized_async)
+    .then(value=>{
+        if (value)
+            navigateTo('/');
+    }).catch(e=>toast = 'Inner error')
+    .finally(()=>promise = null);
+
+    $: make_err('Auth error', toast);
+
 </script>
 
 <div style="padding: 2em; display: flex; flex-direction: column; gap: 1em; float:left;">
@@ -58,7 +64,4 @@
             on:click={on_auth}
             skeleton={!!promise}>Auth
     </Button>
-    {#if toast}
-        <ToastNotification kind="error" title="Auth error" subtitle={toast} timeout={5000}/>
-    {/if}
 </div>
