@@ -35,7 +35,7 @@
 
 <Router>
     <Route path="/auth" component={import('./pages/auth.svelte')}/>
-    <Route path="/main" component={import('./pages/main.svelte')}/>
+    <Route path="/" component={import('./pages/main.svelte')}/>
 </Router>
 
 {#key $toast}

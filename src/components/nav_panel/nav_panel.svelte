@@ -8,7 +8,14 @@
     const ctx = getAllContexts();
     let views = [];
     setContext('nav_panel', {
-        add: x=>views = [...views, x],
+        add_or_upd: x=>{
+            let index = views.findIndex(v=>x.id==v.id);
+            if (index>=0)
+                views.splice(index, 1, x);
+            else
+                views.push(x);
+            views = [...views];
+        },
         remove: x=>views = views.filter(v=>x.id!=v.id)
     });
     $: {
@@ -31,14 +38,10 @@
     <ContentSwitcher bind:selectedIndex>
         {#each views as view}
             {@const index = views.indexOf(view)}
-            <Switch text={view.text} selected={index == selectedIndex}/>
+            <Switch text={view.text} selected={index == selectedIndex} disabled={view.disabled}/>
         {/each}
     </ContentSwitcher>
 
     <slot/>
-
-    <!--{#each views as {path, component}}-->
-<!--        <Route {path} {component}/>-->
-<!--    {/each}-->
 </Router>
 

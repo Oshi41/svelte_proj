@@ -160,9 +160,11 @@
         NumberInputSkeleton,
         SelectSkeleton
     } from 'carbon-components-svelte';
+
     import {lc_json_writable_store} from '../../lib/svelte_utils.js';
     import {dur2str} from '../../utils.js';
     import {getContext} from 'svelte';
+    import Clock from '../../components/clock.svelte';
 
     const {async_toast_err} = getContext('toast');
 
@@ -215,13 +217,13 @@
         .finally(()=>request_today_attendance($attendance.username))
         .then(v=>attendance.update(src=>Object.assign(src, v)))
         .catch(async_toast_err('Today attendance fetch error'))
-        .finally(x=> promise = null);
+        .finally(x=>promise = null);
     };
 
     let requests = [
         request_today_attendance($attendance.username)
         .then(v=>attendance.update(src=>Object.assign(src, v)))
-        .then(()=>request_commits($attendance.username, $attendance.first_checkin || today()))
+        .then(()=>request_commits($attendance.username, $attendance.first_checkin||today()))
         .then(r=>commits = r)
         .catch(async_toast_err('Today attendance fetch error')),
     ];
@@ -258,7 +260,8 @@
             <img style="width: 8em; height: 8em; object-fit: cover; border-radius: 50%"
                  src={`http://fs.luminati.io/hr/pictures/login/${$attendance.username}.jpeg`}
                  alt={$attendance.username}/>
-            <h1>{$attendance.username}</h1>
+            <h1 style="width: 100%">{$attendance.username}</h1>
+            <Clock style="width: 12em"/>
         {/if}
     </div>
     <FormLabel style="margin-top: 2em">Working hours</FormLabel>

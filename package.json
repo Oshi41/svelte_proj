@@ -15,6 +15,7 @@
     "carbon-components-svelte": "^0.75.0",
     "carbon-icons-svelte": "^11.4.0",
     "yrv": "^0.0.57",
-    "synchronized-promise": "^0.3.1"
+    "synchronized-promise": "^0.3.1",
+    "web-clocks": "^1.0.0"
   }
 }
