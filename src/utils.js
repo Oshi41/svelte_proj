@@ -102,18 +102,28 @@ export const today = (is_utc = false)=>{
  * @param opts
  * @return {any}
  */
-export const set = (source, prop, paths, opts = {})=>{
-    if (!source|| !prop|| !paths?.length) return source;
+export const set = (source, prop, paths, {skip_falsey = true,
+    treat_falsey_as_delete = false, only_change_props = false} = {})=>{
+    if (!source|| !paths?.length) return source;
 
     let last_path = paths.pop();
 
     let temp = source;
     for (let key of paths){
-        if (!temp.hasOwnProperty(key)) temp[key] = {};
+        if (!temp.hasOwnProperty(key))
+        { // Can't create property
+            if (!only_change_props)
+                return source;
+            temp[key] = {};
+        }
         temp = temp[key];
     }
 
-    temp[last_path] = prop;
+    if (prop|| !skip_falsey)
+        temp[last_path] = prop;
+    else if (!prop&&treat_falsey_as_delete)
+        delete temp[last_path];
+
     return source;
 };
 
@@ -130,6 +140,20 @@ export const get = (source, paths)=>{
     while(temp&&paths.length)
         temp = source[paths.shift()];
     return temp;
+};
+
+export const pick = (src, paths, opts = undefined)=>{
+    if (typeof paths=='string')
+        paths = paths.split(' ');
+    if (!Array.isArray(paths))
+        return {};
+    let res = {};
+    for (let path of paths){
+        path = path.split('.');
+        let prop = get(src, path);
+        set(res, prop, path, opts);
+    }
+    return res;
 }
 
 /**

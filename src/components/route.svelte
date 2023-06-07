@@ -75,9 +75,12 @@
     import {Route} from 'yrv';
     import {getAllContexts} from 'svelte';
 
-    const ctx = getAllContexts();
+    set_full_path(getAllContexts(), $$props.path);
     export let router;
-    set_full_path(ctx, $$props.path);
 </script>
 
-<Route {...$$props} {router}/>
+<Route {...$$props} {router}>
+    {#if (!$$props.component)}
+        <slot {...$$props}/>
+    {/if}
+</Route>

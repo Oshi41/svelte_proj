@@ -1,11 +1,9 @@
 <script>
     import {TreeView} from 'carbon-components-svelte';
 
-    export let dir;
-    const {dir_name, text} = dir||{};
-    let label;
-    $: label = text || dir_name;
+    export let dir = {};
+    const {dir_name} = dir;
 </script>
 
-<h3>Here</h3>
+<h3>{dir_name}</h3>
 <TreeView />
