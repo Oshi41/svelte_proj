@@ -13,7 +13,10 @@
      * @return {string}
      */
     const sanitize_value = str=>{
-        return str.replace(/\\/g, '/').replace(/\/+/g, '/') || '';
+        str = str.replace(/\\/g, '/').replace(/\/+/g, '/') || '';
+        let exclude = '* :'.split(' '); // rm parameters and masks
+        str = str.split('/').filter(Boolean).filter(x=>exclude.every(k=>!x.includes(k))).join('/');
+        return '/'+str;
     }
 
     /**
@@ -42,14 +45,13 @@
     const get_inner_route_path = (ctx, path)=>{
         let context = ctx.get(ctx_name);
         if (!context)
-            return '';
+            return path;
         return get(context.full_path)+path;
     };
 
     /**
      * @param ctx {Map}
      * @param path {string}
-     * @param update {boolean}
      */
     export const get_full_path = (ctx, path = '')=>{
         return sanitize_value(get_inner_route_path(ctx, path)||get_yrv_route_path(ctx, path)||'');

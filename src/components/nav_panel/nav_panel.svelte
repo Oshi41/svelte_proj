@@ -1,7 +1,7 @@
 <script>
     import {ContentSwitcher, Switch} from 'carbon-components-svelte';
-    import Route, {Router, get_full_path} from '../route.svelte';
-    import {navigateTo, router} from 'yrv';
+    import {Router, get_full_path} from '../route.svelte';
+    import {navigateTo} from 'yrv';
     import {getAllContexts, onMount, setContext} from 'svelte';
 
     let selectedIndex;
@@ -25,7 +25,7 @@
             navigateTo(current_path);
         }
     }
-    let switcher;
+    let switcher, base_path = get_full_path(ctx);
     onMount(()=>{
         let current_path = window.location.href;
         let index = views.findIndex(x=>current_path.includes(get_full_path(ctx, x.path)));
@@ -37,11 +37,11 @@
 <Router>
     <ContentSwitcher bind:selectedIndex>
         {#each views as view}
-            {@const index = views.indexOf(view)}
-            <Switch text={view.text} selected={index == selectedIndex} disabled={view.disabled}/>
+            {@const selected = selectedIndex == views.indexOf(view)}
+            {@const {disabled, text} = view}
+            <Switch {selected} {text} {disabled}/>
         {/each}
     </ContentSwitcher>
-
     <slot/>
 </Router>
 

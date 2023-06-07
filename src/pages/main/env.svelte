@@ -1,17 +1,26 @@
 <script>
-    import NavPanel from '../../components/nav_panel/nav_panel.svelte';
-    let views = [
+    import {NavPanel, Switch} from '../../components/nav_panel';
+    import Dir from './env/dir.svelte';
+    let dirs = [
         {
-            path: '/zon1',
-            text: 'zon1',
-            component: import('./env/dir.svelte'),
+            dir_name: '.zon',
+            text: 'System zon',
         },
         {
-            path: '/zon2',
-            text: 'zon2',
-            component: import('./env/dir.svelte'),
+            dir_name: 'zon1',
+        },
+        {
+            dir_name: 'zon2',
         },
     ];
 </script>
 
-<h3>Here</h3>
+<div style="display: flex; flex-direction: column; gap: 1em; margin: 1em">
+    <h3>Working environments</h3>
+    <NavPanel>
+        {#each dirs as dir}
+            {@const {dir_name: path, text} = dir}
+            <Switch id={'env_'+path} path={'/'+path} text={text || path} component={Dir} {dir}/>
+        {/each}
+    </NavPanel>
+</div>

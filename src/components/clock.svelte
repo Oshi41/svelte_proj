@@ -6,7 +6,8 @@
     export let markers = 'sixty'
     export let time_zones = [];
 
-    let name, offset = time_zones?.[0]?.offset, time = getNow();
+    export let offset;
+    let name, time = getNow();
 
     function getNow(){
         const local = -new Date().getTimezoneOffset();

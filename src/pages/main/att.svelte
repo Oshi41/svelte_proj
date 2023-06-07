@@ -281,7 +281,8 @@
                  alt={$attendance.username}/>
             <h1 style="width: 45%">{$attendance.username}</h1>
             {@const size = 10}
-            <Clock style="width: {size}em; height: {size}em" {time_zones}/>
+            <Clock style="width: {size}em; height: {size}em" {time_zones}
+                bind:offset={$app_settings.selected_clock}/>
         {/if}
     </div>
     <FormLabel style="margin-top: 2em">Working hours</FormLabel>

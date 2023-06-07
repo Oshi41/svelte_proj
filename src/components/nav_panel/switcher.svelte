@@ -7,10 +7,12 @@
         throw new Error('You need to add <NavPanel /> as root component');
 
     add_or_upd($$props);
-    onDestroy(()=>remove($$props));
     afterUpdate(()=>{
-        add_or_upd($$props); // throw any updates on upper level
+        add_or_upd($$props); // pass any updates on upper level
     });
+    onDestroy(()=>remove($$props));
+
+    console.log('Route props:', $$props);
 </script>
 
 <Route {...$$props}/>

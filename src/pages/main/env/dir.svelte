@@ -1,5 +1,11 @@
 <script>
-    let txt = Math.floor(Math.random()*10);
+    import {TreeView} from 'carbon-components-svelte';
+
+    export let dir;
+    const {dir_name, text} = dir||{};
+    let label;
+    $: label = text || dir_name;
 </script>
 
-<h1>{txt}</h1>
+<h3>Here</h3>
+<TreeView />
