@@ -8,7 +8,7 @@
 </script>
 
 <NavPanel>
-    <Switch id="att" path="/att" text="Attendance" component={import('./main/att.svelte')} disabled={!authorized}/>
-    <Switch id="env" path="/env" text="Environment" component={import('./main/env.svelte')}/>
-    <Switch id="settings" path="/settings" text="Settings" component={import('./main/settings.svelte')}/>
+    <Switch key="att" path="/att" text="Attendance" component={import('./main/att.svelte')} disabled={!authorized}/>
+    <Switch key="env" path="/env" text="Environment" component={import('./main/env.svelte')}/>
+    <Switch key="settings" path="/settings" text="Settings" component={import('./main/settings.svelte')}/>
 </NavPanel>
