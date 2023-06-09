@@ -51,12 +51,8 @@ export const q2str = (query)=>{
         if (types.includes(typeof val)) val = JSON.stringify(val);
         parts.push(key+'='+val);
     }
-    return parts.length ? '?'+parts.join('&') : '';
+    return parts.length&&'?'+parts.join('&');
 };
-
-export const str2q = (query = '')=>query.substring(1).split('&')
-    .filter(Boolean).map(x=>x.split('='))
-    .reduce((p, [k, v])=>Object.assign(p, {[k]: v}), {});
 
 export const date_format = (date, f_txt)=>{
     if (!(date instanceof Date)) return '';

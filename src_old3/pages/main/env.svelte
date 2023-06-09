@@ -20,7 +20,7 @@
     <NavPanel>
         {#each dirs as dir}
             {@const {dir_name: path, text} = dir}
-            <Switch id={'env_'+path} path={'/'+path} text={text || path} component={Dir} {dir}/>
+            <Switch key={'env_'+path} path={'/'+path} text={text || path} component={Dir} {dir}/>
         {/each}
     </NavPanel>
 </div>
