@@ -20,6 +20,9 @@
         let url = new URL('https://fake.com' + sanitize_route(route));
         let [l, r] = [url, current_url].map(x => x.pathname.split('/').filter(Boolean));
         for (let i = 0; i < l.length; i++) {
+            const left = l[i];
+            if (left == '*' || left.startsWith(':'))
+                return true;
             if (l[i] != r[i])
                 return false;
         }
@@ -32,7 +35,7 @@
         return true;
     };
 
-    const url_store = writable('');
+    export const url_store = writable(1);
 </script>
 
 <script>
@@ -64,14 +67,6 @@
     }
     $: {
         $full_path = ($p_path || '') + path;
-
-        if ($p_path?.length > 1) {
-            console.debug({
-                visible,
-                full_path: get(full_path),
-                parent: $p_path
-            })
-        }
     }
     $: recheck_condition(disabled);
     $: upd_state(check_condition && $full_path && $url_store);
@@ -117,6 +112,7 @@
         window.dispatchEvent(new Event('historychanged', {
             bubbles: true, cancelable: false, composed: false,
         }));
+        url_store.update(value => value++);
     };
     setContext(ctx_name, {path: full_path, navigate_to});
 
