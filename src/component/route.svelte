@@ -22,8 +22,8 @@
         for (let i = 0; i < l.length; i++) {
             const left = l[i];
             if (left == '*' || left.startsWith(':'))
-                return true;
-            if (l[i] != r[i])
+                continue;
+            if (left != r[i])
                 return false;
         }
         [l, r] = [url, current_url].map(x => x.search.substring(1).split('&').filter(Boolean).map(x => x.split('='))
@@ -81,7 +81,8 @@
     const navigate_to = async ({pathname = '', query = {}} = {}, {
         relative = true,
         save = true,
-        strict_query_param = true
+        strict_query_param = true,
+        only_if_not_active = true,
     } = {}) => {
         if (relative)
             pathname = $full_path + pathname;
@@ -103,6 +104,8 @@
 
         let url = new URL(current_url.origin + pathname + q2str(query)).toString();
         if (url == current_url.toString())
+            return;
+        if (only_if_not_active && chech_route(url)) // todo right URL part
             return;
 
         let args = [{page: url}, '', url];
