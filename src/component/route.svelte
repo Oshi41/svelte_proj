@@ -102,12 +102,13 @@
         if (strict_query_param)
             Object.assign(query, str2q(current_url.search));
 
-        let url = new URL(current_url.origin + pathname + q2str(query)).toString();
-        if (url == current_url.toString())
+        let url = new URL(current_url.origin + pathname + q2str(query));
+        if (url.toString() == current_url.toString())
             return;
-        if (only_if_not_active && chech_route(url)) // todo right URL part
+        if (only_if_not_active && chech_route(url.href.replace(url.origin, ''))
             return;
-
+        
+        url = url.toString();
         let args = [{page: url}, '', url];
         save ? window.history.pushState(...args) : window.history.replaceState(...args);
 
