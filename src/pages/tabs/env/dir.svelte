@@ -4,6 +4,7 @@
     import {select_recursive} from '../../../utils.js';
     import {getContext} from "svelte";
     import {Loading} from "carbon-components-svelte";
+    import TreeItem from './tree_item.svelte';
     import {
         Hourglass as Running,
         Wikis as Selenium,
@@ -12,8 +13,7 @@
         ExpandAll,
         CollapseAll,
         Run,
-        FolderMoveTo,
-        FolderDetails,
+        Stop
     } from "carbon-icons-svelte";
 
     const icon_types = {
@@ -21,11 +21,20 @@
         selenium: Selenium,
         running: Running,
         folder: Folder,
-        folder_with_tests: FolderMoveTo,
-        folder_with_running_tests: FolderDetails,
+        test: Run,
+        ignore: Stop,
     };
-    const type_icon_map = new Map(Array.from(Object.entries(icon_types)));
-    const test_types = 'mocha selenium folder_with_tests'.split(' ');
+    const get_icon = (type)=>{
+        type = Array.isArray(type) ? type : type?.split(' ')||[];
+        let icons = type.map(x=>icon_types[x]).filter(Boolean);
+        if (!icons?.length)
+            return undefined;
+        if (icons.length == 1)
+            return icons[0];
+        return null;
+        // return <div>{type}</div>;
+    }
+    const test_types = 'mocha selenium tests'.split(' ');
     const run_tests = 'running folder_with_running_tests'.split(' ');
 
     export let dirname = '';
@@ -42,11 +51,11 @@
         if (!source)
             return source;
 
-        const {fullpath, filename, type} = source;
+        const {fullpath, filename, types} = source;
         return {
             id: fullpath,
             text: filename,
-            icon: type_icon_map.get(type),
+            icon: TreeItem,
             children: source?.children?.map(x=>convert_children(x)),
         };
     };
@@ -74,7 +83,14 @@
 
         <Button icon={Run} disabled={!can_run_tests}>Run tests</Button>
         <Button icon={Run} disabled={!can_stop_tests}>Stop tests</Button>
+
+        <Button icon={Run} disabled={!can_run_tests}>Ignore tests</Button>
+        <Button icon={Run} disabled={!can_stop_tests}>Delete from tests</Button>
     </div>
     <TreeView bind:selectedIds bind:expandedIds labelText={dirname + ' files'} {children}
-        bind:expandAll bind:collapseAll/>
+        bind:expandAll bind:collapseAll>
+        <svelte:fragment slot="tree_item">
+            <p>Here</p>
+        </svelte:fragment>
+    </TreeView>
 {/if}

@@ -76,6 +76,7 @@
      * @param relative {boolean} - relative to current path (nearest <Route />)
      * @param save {boolean} - save in history
      * @param strict_query_param {boolean} - apply only provided URL params
+     * @param only_if_not_active {boolean} - navigate only if routte not active
      * @return {Promise<void>}
      */
     const navigate_to = async ({pathname = '', query = {}} = {}, {
@@ -105,7 +106,8 @@
         let url = new URL(current_url.origin + pathname + q2str(query));
         if (url.toString() == current_url.toString())
             return;
-        if (only_if_not_active && chech_route(url.href.replace(url.origin, ''))
+        let cur_route = url.href.replace(url.origin, '')
+        if (only_if_not_active && check_route(cur_route))
             return;
         
         url = url.toString();
