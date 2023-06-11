@@ -42,21 +42,21 @@ export const get_zon_dir = async dirname => {
         root: {
             filename: 'pkg',
             fullpath: '/var/log/pkg',
-            type: 'folder tests',
+            types: 'folder mocha selenium'.split(' '),
             children: [
                 {
                     filename: 'child',
-                    types: 'selenium ignored',
+                    types: 'selenium ignored'.split(' '),
                     fullpath: '/var/log/pkg/child',
                 },
                 {
                     filename: 'child 1',
-                    types: 'mocha',
+                    types: 'mocha'.split(' '),
                     fullpath: '/var/log/pkg/child 1',
                 },
                 {
                     filename: 'child 2',
-                    types: 'folder',
+                    types: 'folder'.split(' '),
                     fullpath: '/var/log/pkg/child 2',
                 }
             ],
