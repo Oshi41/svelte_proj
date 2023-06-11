@@ -1,9 +1,11 @@
 <script>
-    import {Button, MultiSelect, Search, TreeView} from "carbon-components-svelte";
-    import {get_zon_dir} from '../../../lib/gluon_lib.js';
-    import {select_recursive} from '../../../utils.js';
-    import {getContext} from "svelte";
+    import {Button, MultiSelect, Search} from "carbon-components-svelte";
+    import {getContext, onMount, tick} from "svelte";
     import {Loading} from "carbon-components-svelte";
+    import {get_zon_dir, subscribe_on_file_upd, send_msg} from '../../../lib/gluon_lib.js';
+    import TreeView from '../../../component/tree_view/view.svelte';
+    import {dur2str, select_recursive} from '../../../utils.js';
+    import TreeItem from './tree_item.svelte';
     import {
         Hourglass as Running,
         Wikis as Selenium,
@@ -22,53 +24,63 @@
         folder: [Folder, 'Only folders'],
         ignore: [Stop, 'Ignored tests'],
     };
-    const get_icon = (types) => {
-        let icons = types?.map(x => icon_types[x]).filter(Boolean);
-        if (!icons?.length)
-            return undefined;
-        if (icons.length == 1)
-            return icons[0][0];
-        return null;
-    }
-
     export let dirname = '';
-    let selectedIds = [], expandedIds = [], promise, data, children, expandAll, collapseAll, map;
-    let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore;
-    let selected_file_types = Object.keys(icon_types), search = '';
+    let selectedIds = [], expandedIds = [], promise;
+    let flat_tree = []; // original data from server
+    let map, children = [], expandAll, collapseAll; //  tree props
+    let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore; // buttons
+    let selected_file_types = [], search = ''; // filters
     const {async_toast_err} = getContext('toast');
     const req_by_name = _dirname => {
         promise = get_zon_dir(_dirname)
-            .then(x => data = x)
+            .then(data => {
+                let root = data.root;
+                flat_tree = select_recursive([root], x => x.children);
+            })
             .catch(async_toast_err(`Error during ${dirname} request`))
             .finally(() => promise = null);
     };
+    /**
+     * @param source {File}
+     * @return {Array | undefined}
+     */
     const convert_child = (source) => {
         if (!source)
             return;
 
         let id = source?.fullpath;
-        let children = source?.children?.map(x=>convert_child(x));
-        if (!map.has(id) && !children?.length || children.every(({fullpath})=>!map.has(fullpath)))
+        let _children = source?.children?.map(x => convert_child(x))?.filter(Boolean);
+        if (!map.has(id) && !_children?.length)
             return;
 
-        const {filename: text, types} = source;
         return {
-            id, text, icon: get_icon(types),
-            children
+            ...source,
+            id,
+            template: TreeItem,
+            children: _children,
         };
     };
+    const perform_search = (s, f)=>{
+        let res = [...flat_tree];
+        if (s)
+        {
+            s = s.toLowerCase();
+            const search_props = 'filename fullpath'.split(' ');
+            res = res.filter(i => search_props.find(p => i[p].toLowerCase().includes(s)));
+        }
+        if (f.length)
+            res = res.filter(({types}) => types.find(x => f.includes(x)));
+        map = new Map(res.map(x=>[x.fullpath, x]));
+        map.root = flat_tree[0];
+    };
+    const update_map = upd=>{
+        for (let e of upd) {
+            map.set(e.fullpath, e);
+        }
+        map = new Map(map);
+        map.root = flat_tree[0];
+    };
     $: req_by_name(dirname);
-    $: {
-        const search_props = 'fullname fullpath'.split(' ');
-        let all_items = select_recursive([data?.root], x => x?.children);
-        if (search)
-            all_items = all_items.filter(i=>search_props.find(p=>p[i].toLowerCase().includes(search.toLowerCase())));
-        if (selected_file_types?.length)
-            all_items = all_items.filter(({types})=>types.find(x=>selected_file_types.includes(x)));
-        map = new Map(all_items.map(x=>[x.fullpath, x]));
-        children = convert_child([data?.root]);
-        expandAll?.();
-    }
     $: {
         can_run_tests = can_stop_tests = can_add_to_ignore = can_rm_from_ignore = false;
         let types = selectedIds.map(x => map.get(x)?.types).filter(Boolean);
@@ -77,9 +89,24 @@
 
             can_run_tests = types.every(arr => arr.find(x => test_types.includes(x)));
             can_stop_tests = types.every(arr => arr.includes('running'));
-            can_add_to_ignore = can_run_tests && !can_stop_tests;
+            can_add_to_ignore = can_run_tests && !can_stop_tests && types.every(x => !x.includes('ignore'));
             can_rm_from_ignore = !can_run_tests && types.every(x => x.includes('ignore'));
         }
+    }
+    $: perform_search(search, selected_file_types);
+    $: {
+        children = [convert_child(map?.root)].filter(Boolean);
+        tick().then(expandAll);
+    }
+    onMount(()=>{
+        return subscribe_on_file_upd(update_map);
+    })
+    const send_cmd = name=>()=>{
+        let items = selectedIds.map(x=>map.get(x)).filter(Boolean);
+        if (items.length)
+            promise =  send_msg(name, items)
+                .catch(async_toast_err('Error during sending '+name))
+                .finally(()=>promise = null)
     }
 </script>
 
@@ -92,11 +119,11 @@
 
         <div style="padding: 1em"/>
 
-        <Button icon={Run} disabled={!can_run_tests}>Run tests</Button>
-        <Button icon={Stop} disabled={!can_stop_tests}>Stop tests</Button>
+        <Button icon={Run} disabled={!can_run_tests} on:click={send_cmd('test.run')}>Run tests</Button>
+        <Button icon={Stop} disabled={!can_stop_tests} on:click={send_cmd('test.stop')}>Stop tests</Button>
 
-        <Button disabled={!can_run_tests}>Ignore tests</Button>
-        <Button disabled={!can_stop_tests}>Delete from ignored</Button>
+        <Button disabled={!can_run_tests} on:click={send_cmd('test.ignore')}>Ignore tests</Button>
+        <Button disabled={!can_stop_tests} on:click={send_cmd('test.ignore.rm')}>Delete from ignored</Button>
 
         <div style="padding: 1em"/>
 

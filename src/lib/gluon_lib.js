@@ -36,6 +36,23 @@ export const get_zon_dirs = async () => {
     ]
 };
 
+/**
+ * @typedef {Object} File
+ * @property {string} filename - base name
+ * @property {string} fullpath - full path using as ID
+ * @property {Array<'selenium' | 'mocha' | 'folder' | 'ignored' | 'running' | 'selenium'>} types
+ * mocha - file contains mocha tests / directory contains files with mocha test
+ * selenium - file contains selenium tests / directory contains files with selenium test
+ * ignored - file/folder added to use ignored list
+ * running - test is running / dir contains running tests
+ * @property {Array<File> | undefined} - Folder children
+ * @property {number} success? - total success runs
+ * @property {number} fail? - total fail runs
+ * @property {number} avg? - avg run time
+ * @property {boolean} last_run_failed? - last test run was failed
+ * @property {Date} last_run_date? - last test run date
+ */
+
 export const get_zon_dir = async dirname => {
     return {
         dirname,
@@ -51,15 +68,42 @@ export const get_zon_dir = async dirname => {
                 },
                 {
                     filename: 'child 1',
-                    types: 'mocha'.split(' '),
+                    types: 'mocha running'.split(' '),
                     fullpath: '/var/log/pkg/child 1',
+                    success: 1,
+                    fail: 1,
+                    avg: 12563356,
                 },
                 {
                     filename: 'child 2',
                     types: 'folder'.split(' '),
+                    fullpath: '/var/log/pkg/child 2',
+                },
+                {
+                    filename: 'child 2',
+                    types: 'mocha ignore'.split(' '),
                     fullpath: '/var/log/pkg/child 2',
                 }
             ],
         }
     }
 };
+
+/**
+ *
+ * @param fn {Function<Array>}
+ */
+export const subscribe_on_file_upd = (fn)=>{
+    return {
+        unsubscribe: ()=>{}
+    };
+}
+
+/**
+ * @param msg {string}
+ * @param ctx {any}
+ * @return {Promise<void>}
+ */
+export const send_msg = async (msg, ctx)=> {
+
+}

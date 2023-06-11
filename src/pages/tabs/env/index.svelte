@@ -1,7 +1,7 @@
 <script>
     import {Button} from "carbon-components-svelte";
     import Refresh from "carbon-icons-svelte/lib/UpdateNow.svelte";
-    import {getContext, onMount} from "svelte";
+    import {getContext} from "svelte";
     import {Tab, TabPanel} from '../../../component/tab_panel/index.js';
     import Dir from './dir.svelte';
     import {get_zon_dirs} from '../../../lib/gluon_lib.js';
