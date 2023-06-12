@@ -14,6 +14,8 @@
     "vite": "^4.3.9",
     "carbon-components-svelte": "^0.75.0",
     "carbon-icons-svelte": "^11.4.0",
-    "synchronized-promise": "^0.3.1"
+    "synchronized-promise": "^0.3.1",
+    "@gluon-framework/gluon": "^0.14.0",
+    "@seald-io/nedb": "^4.0.2"
   }
 }
