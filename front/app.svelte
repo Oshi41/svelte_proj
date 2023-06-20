@@ -3,8 +3,7 @@
     import {Theme, ToastNotification} from 'carbon-components-svelte';
     import {setContext} from 'svelte';
     import {writable} from 'svelte/store';
-    import {date_format} from './utils.js';
-    import {is_authorized_async} from './lib/gluon_lib.js';
+    import {date_format} from '../lib/utils.js';
     import {lc_json_writable_store} from './lib/svelte_utils.js';
     import Route from './component/route.svelte';
     import Auth from './pages/auth.svelte';
@@ -35,11 +34,11 @@
 </script>
 <Theme bind:theme={$app_settings.theme}/>
 
-<Route path="/auth" disabled={is_authorized_async()}>
+<Route path="/auth" disabled={true}>
     <Auth/>
 </Route>
 
-<Route path="/" disabled={is_authorized_async().then(x=>!x)}>
+<Route path="/" disabled={false}>
     <Tabs/>
 </Route>
 

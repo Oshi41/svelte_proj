@@ -1,9 +1,8 @@
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
-const nedb = require('@seald-io/nedb');
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import nedb from '@seald-io/nedb';
 const db_cache = new Map();
-const E = exports;
 
 /**
  * Read program related file
@@ -66,7 +65,7 @@ const get_zon_rel_path = async abs_path=>{
  * @param singleton {boolean} single instance per program
  * @return {Promise<Nedb>}
  */
-E.get_db = async (name, {indexes = [], singleton = true})=>{
+export const get_db = async (name, {indexes = [], singleton = true})=>{
     if (name)
         name = resolve_rel_path(name);
     let db = new nedb({

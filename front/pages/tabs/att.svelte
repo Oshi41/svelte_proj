@@ -1,6 +1,6 @@
 <script>
     // region Requests
-    import {str2dur, date_format, mls, q2str, today} from '../../utils.js';
+    import {str2dur, date_format, mls, q2str, today} from '../../../lib/utils.js';
     import {wbm_fetch} from '../../lib/gluon_lib.js';
 
     /**
@@ -162,7 +162,7 @@
     } from 'carbon-components-svelte';
 
     import {lc_json_writable_store} from '../../lib/svelte_utils.js';
-    import {dur2str} from '../../utils.js';
+    import {dur2str} from '../../../lib/utils.js';
     import {get_username} from '../../lib/gluon_lib.js';
     import {getContext} from 'svelte';
     import Clock from '../../component/clock.svelte';

@@ -5,7 +5,7 @@ import {
     is_store,
     get as get_prop,
     set as set_prop
-} from '../utils.js';
+} from '../../lib/utils.js';
 
 const parse_obj_no_err = str=>{
     if (!str)

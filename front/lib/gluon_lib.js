@@ -1,4 +1,4 @@
-import {sleep} from '../utils.js';
+import {sleep} from '../../lib/utils.js';
 /**
  * Request username from Gluon backend
  * @return {Promise<string>}
@@ -35,8 +35,6 @@ export const get_zon_dirs = async () => {
         {dirname: 'zon1'},
     ]
 };
-
-
 
 export const get_zon_dir = async dirname => {
     return {

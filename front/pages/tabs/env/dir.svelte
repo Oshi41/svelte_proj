@@ -4,7 +4,7 @@
     import {Loading} from "carbon-components-svelte";
     import {get_zon_dir, subscribe_on_file_upd, send_msg} from '../../../lib/gluon_lib.js';
     import TreeView from '../../../component/tree_view/view.svelte';
-    import {dur2str, select_recursive} from '../../../utils.js';
+    import {dur2str, select_recursive} from '../../../../lib/utils.js';
     import TreeItem from './tree_item.svelte';
     import {
         Hourglass as Running,

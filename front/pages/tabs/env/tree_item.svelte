@@ -1,7 +1,7 @@
 <script>
     import {Folder, Wikis, Cafe, FolderAdd} from "carbon-icons-svelte";
     import {TooltipDefinition, InlineLoading, OverflowMenuItem, OverflowMenu} from "carbon-components-svelte";
-    import {dur2str} from "../../../utils.js";
+    import {dur2str} from "../../../../lib/utils.js";
 
     export let types;
     export let filename;

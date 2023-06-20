@@ -15,3 +15,19 @@
  * @property {Date} last_run_date? - last test run date
  * @property {File[] | undefined} children
  */
+
+/**
+ * @typedef {Object} TestRun
+ * @property {string} file zon-relative path
+ * @property {Date} start start of current test file
+ * @property {Date} end end of current test file
+ * @property {'init' | 'success' | 'fail'} result task result status
+ * @property {string} error? task error
+ * @property {'mocha' | 'selenium'} type test type
+ */
+
+/**
+ * @typedef {Object} IgnoredTest
+ * @property {string} file zon-relative path
+ * @property {string} ignore_reason why ignoring test
+ */

@@ -1,7 +1,7 @@
 <script context="module">
     import {getContext, setContext} from "svelte";
     import {writable} from "svelte/store";
-    import {q2str, str2q} from "../utils.js";
+    import {q2str, str2q} from "../../lib/utils.js";
 
     export const ctx_name = '_route_meta';
     /**
