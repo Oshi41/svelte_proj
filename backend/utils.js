@@ -53,10 +53,20 @@ const get_zon_root_dir = async abs_path=>{
  * @param abs_path {string} filename inside zon dir
  * @return {Promise<string>}
  */
-const get_zon_rel_path = async abs_path=>{
+export const get_zon_rel_path = async abs_path=>{
     let root = await get_zon_root_dir(abs_path);
-    return path.relative(root, abs_path);
+    let res = path.relative(root, abs_path);
+    return res;
 };
+
+const wrap_log = (source, func, dbg_hdr = '')=>{
+    let orig = source[func].bind(source);
+    source[func] = (...args)=>{
+        console.debug(dbg_hdr, 'calling', func, 'arguments:', JSON.stringify(args, null, 2));
+        orig(...args);
+    };
+    source['orig_'+func] = orig;
+}
 
 /**
  * Gets or creates DB
@@ -65,13 +75,17 @@ const get_zon_rel_path = async abs_path=>{
  * @param singleton {boolean} single instance per program
  * @return {Promise<Nedb>}
  */
-export const get_db = async (name, {indexes = [], singleton = true})=>{
+export const get_db = async (name = undefined, {indexes = [], singleton = true})=>{
     if (name)
         name = resolve_rel_path(name);
     let db = new nedb({
         inMemoryOnly: !name,
         filename: name,
     });
+    if (+process.env.DEBUG)
+    {
+        wrap_log(db, 'updateAsync');
+    }
     if (singleton && db_cache.has(name))
         db = db_cache.get(name);
     if (singleton && !db_cache.has(name))
@@ -80,5 +94,5 @@ export const get_db = async (name, {indexes = [], singleton = true})=>{
         await db.ensureIndexAsync(index);
     }
     await db.loadDatabaseAsync();
-    return db
+    return db;
 }

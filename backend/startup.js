@@ -8,7 +8,14 @@ const default_csp = 'default-src * self blob: data: gap:; style-src * self "unsa
 let zon_envs = [];
 
 const main = async ()=>{
-    zon_envs = await get_zon_folders();
+    let json;
+    try {
+        zon_envs = await get_zon_folders();
+        json = await zon_envs[0].toJSON();
+    } catch (e) {
+        console.error('CRIT:', e);
+        return;
+    }
     const window = await Gluon.open('./dist/index.html', {
         allowHTTP: true,
         localCSP: default_csp,
@@ -18,7 +25,7 @@ const main = async ()=>{
 
     window.ipc.get_username = ()=>os.userInfo().username;
     window.ipc.get_zon_dirs = ()=>zon_envs.map(x=>({dirname: x.dirname}));
-    window.ipc.get_zon_dir = name=>zon_envs.filter(x=>x.dirname == name);
+    window.ipc.get_zon_dir = async name => await zon_envs.filter(x => x.dirname == name)?.toJSON();
 };
 
 main();

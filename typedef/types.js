@@ -7,7 +7,6 @@
  * selenium - file contains selenium tests / directory contains files with selenium test
  * ignored - file/folder added to use ignored list
  * running - test is running / dir contains running tests
- * @property {Array<File> | undefined} - Folder children
  * @property {number} success? - total success runs
  * @property {number} fail? - total fail runs
  * @property {number} avg? - avg run time
@@ -21,7 +20,7 @@
  * @property {string} file zon-relative path
  * @property {Date} start start of current test file
  * @property {Date} end end of current test file
- * @property {'init' | 'success' | 'fail'} result task result status
+ * @property {'init' | 'success' | 'fail' | 'canceled'} result task result status
  * @property {string} error? task error
  * @property {'mocha' | 'selenium'} type test type
  */
