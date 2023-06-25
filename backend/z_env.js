@@ -87,12 +87,34 @@ class FileMap {
         if (runs.length) {
             this.success = runs.filter(x => x.result == 'success').length;
             this.fail = runs.filter(x => x.result == 'fail').length;
-            this.avg = runs.map(x => x.end - x.start).reduce((s, c) => s + c, 0) / runs.length;
+            this.avg = runs.filter(x => x.result == 'success')
+                .map(x => x.end - x.start).reduce((s, c) => s + c, 0) / this.success;
             let last_run = runs.sort((a, b) => a.start - b.start)[0];
             this.last_run_failed = last_run.result == 'fail';
             this.last_run_date = last_run.start;
         }
         return true;
+    }
+
+    get_test_data(){
+        let keys = 'success fail avg last_run_failed last_run_date'.split(' ');
+        if (!this.types.has('folder'))
+        {
+            keys = keys.filter(x=>this.hasOwnProperty(x));
+            if (keys.length)
+                return keys.reduce((prev, key)=>Object.assign(prev, {[key]: this[key]}), {});
+        } else if (this.types.size > 1) {
+            let res = {}, test_datas = this.children.map(x=>x.get_test_data()).filter(Boolean);
+            if (test_datas.length)
+            {
+                'success fail avg'.split(' ').forEach(key=>{
+                    res[key] = test_datas.map(x=>x[key]).reduce((prev, c)=>prev+c, 0);
+                });
+                res.last_run_failed = this.children.some(x=>x.last_run_failed);
+                res.last_run_date = this.children.map(x=>x.last_run_date).sort().pop();
+                return res;
+            }
+        }
     }
 
     /**
@@ -101,10 +123,9 @@ class FileMap {
     toJSON() {
         const res = {
             filename: path.basename(this.abs_path),
-            fullpath: this.abs_path
+            fullpath: this.abs_path,
+            ...this.get_test_data()||{}
         };
-        'success fail avg last_run_failed last_run_date'.split(' ')
-            .filter(x=>this.hasOwnProperty(x)).forEach(x=>res[x] = this[x]);
         res.types = Array.from(this.types).filter(x=>x != 'file');
         if (this.children)
             res.children = this.children.map(x => x.toJSON());
@@ -151,7 +172,7 @@ export class ZonDir {
     }
 
     async _init() {
-        console.debug('Starting scanning', this.zon_root, 'folder');
+        console.debug('Starting scanning', this.dirname, 'folder');
         let now = new Date();
 
         /** @type {Nedb<TestRun>}*/
@@ -180,7 +201,7 @@ export class ZonDir {
         if (pending_updates.length)
             await this.test_runs_db.insertAsync(pending_updates);
 
-        console.debug('Scanning finished', this.zon_root, ', took', dur2str(new Date() - now, undefined,
+        console.debug('Scanning finished', this.dirname, 'took', dur2str(new Date() - now, undefined,
             1));
     }
 
@@ -210,14 +231,13 @@ export class ZonDir {
 
     toJSON() {
         return {
-            tree: [this.root.toJSON()]
+            root: this.root.toJSON(),
         };
     }
 }
 
 /**
- * Init zon folder watcher
- * @return {AsyncGenerator<ZonDir, void, *>}
+ * @return {Promise<ZonDir[]>}
  */
 export async function get_zon_folders() {
     const dir = os.homedir();
@@ -231,7 +251,7 @@ export async function get_zon_folders() {
     children = children.filter(Boolean).map(x=>new ZonDir(x));
     let root = children.find(x=>path.basename(x.zon_root) == '.zon');
     await root._init(); // root folder must init at first
-    let json = root.toJSON();
+    return [root]; // XXX debug
     await Promise.all(children.filter(x=>x!=root).map(x => x._init()));
     return children;
 }

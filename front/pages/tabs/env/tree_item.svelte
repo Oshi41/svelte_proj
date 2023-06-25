@@ -11,6 +11,7 @@
     export let run_time;
     export let last_run_failed;
 
+
     let is_test, is_folder;
     $: {
         is_test = 'selenium mocha'.split(' ').find(x => types?.includes(x));

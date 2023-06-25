@@ -1,10 +1,15 @@
-import {sleep} from '../../lib/utils.js';
+const support_gluon = typeof Gluon == 'object';
+
 /**
  * Request username from Gluon backend
  * @return {Promise<string>}
  */
 export const get_username = async () => {
-    return 'arkadii';
+    if (support_gluon)
+        return Gluon.ipc.get_username();
+
+    return 'unknown';
+
 };
 
 /**
@@ -30,46 +35,19 @@ export const wbm_fetch = async (input, init) => {
  * @return {Promise<[]>}
  */
 export const get_zon_dirs = async () => {
-    return [
-        {dirname: '.zon'},
-        {dirname: 'zon1'},
-    ]
+    if (support_gluon)
+        return await Gluon.ipc.get_zon_dirs();
+
+    return [{dirname: '.zon'}];
 };
 
 export const get_zon_dir = async dirname => {
-    return {
-        dirname,
-        root: {
-            filename: 'pkg',
-            fullpath: '/var/log/pkg',
-            types: 'folder mocha selenium'.split(' '),
-            children: [
-                {
-                    filename: 'child',
-                    types: 'selenium ignored'.split(' '),
-                    fullpath: '/var/log/pkg/child',
-                },
-                {
-                    filename: 'child 1',
-                    types: 'mocha running'.split(' '),
-                    fullpath: '/var/log/pkg/child 1',
-                    success: 1,
-                    fail: 1,
-                    avg: 12563356,
-                },
-                {
-                    filename: 'child 2',
-                    types: 'folder'.split(' '),
-                    fullpath: '/var/log/pkg/child 2',
-                },
-                {
-                    filename: 'child 2',
-                    types: 'mocha ignore'.split(' '),
-                    fullpath: '/var/log/pkg/child 2',
-                }
-            ],
-        }
-    }
+    if (support_gluon)
+        return await Gluon.ipc.get_zon_dir(dirname);
+
+    let filepath = `../../dist/test_data/${dirname}.json`;
+    let module = await import(filepath);
+    return module;
 };
 
 /**
