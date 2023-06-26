@@ -17,6 +17,8 @@
     "carbon-icons-svelte": "^11.4.0",
     "synchronized-promise": "^0.3.1",
     "@gluon-framework/gluon": "^0.14.0",
-    "@seald-io/nedb": "^4.0.2"
+    "@seald-io/nedb": "^4.0.2",
+    "pid-cwd": "^1.2.0",
+    "chokidar": "^3.5.3"
   }
 }

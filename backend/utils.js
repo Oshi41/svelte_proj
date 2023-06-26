@@ -1,8 +1,12 @@
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import child_process from 'child_process';
 import nedb from '@seald-io/nedb';
+import {pick} from '../lib/utils.js';
+
 const db_cache = new Map();
+
 
 /**
  * Read program related file
@@ -96,3 +100,28 @@ export const get_db = async (name = undefined, {indexes = [], singleton = true})
     await db.loadDatabaseAsync();
     return db;
 }
+
+/**
+ * @param args
+ * @return {Promise<{stdout: Readable, stderr: Readable, exitCode: number}>}
+ */
+export const spawn_async = (...args)=>new Promise(resolve => {
+    let proc = child_process.spawn(...args);
+    const handle = ()=>resolve(pick(proc, 'stdout stderr exitCode'));
+    proc.on('exit', handle);
+    proc.on('disconnect', handle);
+    proc.on('close', handle);
+    proc.on('error', handle);
+});
+
+/**
+ * Awaits for event result
+ * @param src {EventEmitter}
+ * @param event {string}
+ * @return {Promise<unknown>}
+ */
+export const on_async = (src, event)=>new Promise(resolve => {
+    src.once(event, (...args) => {
+       resolve(...args);
+    });
+});

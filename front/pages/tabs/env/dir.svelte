@@ -135,7 +135,8 @@
             <MultiSelect size="xl"
                          bind:selectedIds={selected_file_types}
                          titleText="File type"
-                         items={Array.from(Object.entries(icon_types)).map(([id, [, text]])=>({id, text}))}
+                         items={Array.from(Object.entries(icon_types)).map(([id, [, text]])=>({id, text}))
+                         .concat([{id: 'hidden', text: 'Hidden'}])}
             />
         </div>
 
