@@ -1,40 +1,60 @@
 <script>
-    import {Folder, Wikis, Cafe, FolderAdd} from "carbon-icons-svelte";
+    import {Folder, Wikis, Cafe, FolderAdd, FetchUploadCloud, AccessibilityColor} from "carbon-icons-svelte";
     import {TooltipDefinition, InlineLoading, OverflowMenuItem, OverflowMenu} from "carbon-components-svelte";
     import {dur2str} from "../../../../lib/utils.js";
 
     export let types;
     export let filename;
-    export let avg;
-    export let success;
-    export let fail;
-    export let run_time;
-    export let last_run_failed;
+
+    // unnecessary props
+    export let id = undefined;
+    export let template = undefined;
+    export let children = undefined;
+    export let leaf = undefined;
+    export let fullpath = undefined;
+    export let success = undefined;
+    export let fail = undefined;
+    export let avg = undefined;
+    export let run_time = undefined;
+    export let last_run_failed = undefined;
+    // unnecessary props end
 
 
-    let is_test, is_folder;
+    let is_test, is_folder, is_cvs_changed, is_hidden;
     $: {
         is_test = 'selenium mocha'.split(' ').find(x => types?.includes(x));
         is_folder = types?.includes('folder');
+        is_cvs_changed = types?.includes('cvs_changed');
+        is_hidden = types?.includes('hidden');
     }
 </script>
 
 <div style="display: flex; flex-direction: row; align-items: center; gap: 0.5em">
     {#if is_folder && is_test}
         <TooltipDefinition tooltipText="Folder with tests">
-            <FolderAdd/>
+            <FolderAdd style="fill: var(--cds-link-02)"/>
         </TooltipDefinition>
     {:else if (is_folder)}
         <Folder/>
     {/if}
     {#if !is_folder && types?.includes('selenium')}
         <TooltipDefinition tooltipText="Selenium tests">
-            <Wikis/>
+            <Wikis style="fill: var(--cds-support-01)"/>
         </TooltipDefinition>
     {/if}
     {#if !is_folder && types?.includes('mocha')}
         <TooltipDefinition tooltipText="Mocha tests">
-            <Cafe/>
+            <Cafe style="fill: var(--cds-link-02)"/>
+        </TooltipDefinition>
+    {/if}
+    {#if types?.includes('cvs_changed')}
+        <TooltipDefinition tooltipText="Changed file">
+            <FetchUploadCloud style="fill: var(--cds-support-03)"/>
+        </TooltipDefinition>
+    {/if}
+    {#if types?.includes('hidden')}
+        <TooltipDefinition tooltipText="Hidden file">
+            <AccessibilityColor style="fill: var(--cds-icon-02)"/>
         </TooltipDefinition>
     {/if}
     {#if (types?.includes('ignore'))}

@@ -1,7 +1,6 @@
 <script>
-    import {Button, MultiSelect, Search} from "carbon-components-svelte";
+    import {Button, MultiSelect, Search, Loading} from "carbon-components-svelte";
     import {getContext, onMount, tick} from "svelte";
-    import {Loading} from "carbon-components-svelte";
     import {get_zon_dir, subscribe_on_file_upd, send_msg} from '../../../lib/gluon_lib.js';
     import TreeView from '../../../component/tree_view/view.svelte';
     import {dur2str, select_recursive} from '../../../../lib/utils.js';
@@ -15,6 +14,8 @@
         CollapseAll,
         Run,
         Stop,
+        AccessibilityColor as Hidden,
+        FetchUploadCloud as Cvs_changed,
     } from "carbon-icons-svelte";
 
     const icon_types = {
@@ -23,13 +24,15 @@
         running: [Running, 'Running tests'],
         folder: [Folder, 'Only folders'],
         ignore: [Stop, 'Ignored tests'],
+        hidden: [Hidden, 'Hidden file'],
+        cvs_changed: [Cvs_changed, 'CVS changed file'],
     };
     export let dirname = '';
     let selectedIds = [], expandedIds = [], promise;
     let flat_tree = []; // original data from server
     let map, children = [], expandAll, collapseAll; //  tree props
     let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore; // buttons
-    let selected_file_types = [], search = ''; // filters
+    let selected_file_types = 'mocha selenium'.split(' '), search = ''; // filters
     const {async_toast_err} = getContext('toast');
     const req_by_name = _dirname => {
         promise = get_zon_dir(_dirname)
@@ -60,20 +63,27 @@
             children: _children,
         };
     };
-    const perform_search = (s, f)=>{
-        let res = [...flat_tree];
-        if (s)
-        {
-            s = s.toLowerCase();
-            const search_props = 'filename fullpath'.split(' ');
-            res = res.filter(i => search_props.find(p => i[p].toLowerCase().includes(s)));
-        }
-        if (f.length)
-            res = res.filter(({types}) => types.find(x => f.includes(x)));
-        map = new Map(res.map(x=>[x.fullpath, x]));
+    const perform_search = (s, f) => {
+        let res = flat_tree.filter(tree_item => {
+            const {types} = tree_item;
+            if (s) {
+                s = s.toLowerCase();
+                const search_props = 'filename fullpath'.split(' ');
+                if (search_props.every(prop => !tree_item[prop]?.toLowerCase()?.includes(s)))
+                    return false;
+            }
+            for (let key of Object.keys(icon_types)) {
+                const selected = !!f.includes(key);
+                const filtered = !!types.includes(key);
+                if (selected && filtered)
+                    return true;
+            }
+            return false;
+        });
+        map = new Map(res.map(x => [x.fullpath, x]));
         map.root = flat_tree[0];
     };
-    const update_map = upd=>{
+    const update_map = upd => {
         for (let e of upd) {
             map.set(e.fullpath, e);
         }
@@ -98,15 +108,15 @@
         children = [convert_child(map?.root)].filter(Boolean);
         tick().then(expandAll);
     }
-    onMount(()=>{
+    onMount(() => {
         return subscribe_on_file_upd(update_map);
     })
-    const send_cmd = name=>()=>{
-        let items = selectedIds.map(x=>map.get(x)).filter(Boolean);
+    const send_cmd = name => () => {
+        let items = selectedIds.map(x => map.get(x)).filter(Boolean);
         if (items.length)
-            promise =  send_msg(name, items)
-                .catch(async_toast_err('Error during sending '+name))
-                .finally(()=>promise = null)
+            promise = send_msg(name, items)
+                .catch(async_toast_err('Error during sending ' + name))
+                .finally(() => promise = null)
     }
 </script>
 
@@ -135,8 +145,7 @@
             <MultiSelect size="xl"
                          bind:selectedIds={selected_file_types}
                          titleText="File type"
-                         items={Array.from(Object.entries(icon_types)).map(([id, [, text]])=>({id, text}))
-                         .concat([{id: 'hidden', text: 'Hidden'}])}
+                         items={Array.from(Object.entries(icon_types)).map(([id, [, text]])=>({id, text}))}
             />
         </div>
 

@@ -17,6 +17,7 @@ const main = async ()=>{
         console.error('CRIT:', e);
         throw e;
     });
+    save_file();
     let file = path.resolve('dist', 'index.html');
     const window = await Gluon.open(file, {
         allowHTTP: true,
@@ -33,7 +34,7 @@ const main = async ()=>{
 const save_file = ()=>{
     let data = zon_envs[0].toJSON();
     let json = JSON.stringify(data, null, 2);
-    let file = path.resolve('dist', 'test_data', '.zon.json');
+    let file = path.resolve('dist', 'test_data', zon_envs[0].dirname+'.json');
     fs.writeFileSync(file, json, 'utf8');
 }
 

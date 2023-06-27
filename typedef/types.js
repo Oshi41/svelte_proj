@@ -2,7 +2,7 @@
  * @typedef {Object} File
  * @property {string} filename - base name
  * @property {string} fullpath - full path using as ID
- * @property {Array<'selenium' | 'mocha' | 'folder' | 'ignored' | 'running' | 'selenium' | 'cvs_changed'>} types
+ * @property {Array<'selenium' | 'mocha' | 'folder' | 'ignored' | 'running' | 'selenium' | 'cvs_changed' | 'hidden'>} types
  * mocha - file contains mocha tests / directory contains files with mocha test
  * selenium - file contains selenium tests / directory contains files with selenium test
  * ignored - file/folder added to use ignored list

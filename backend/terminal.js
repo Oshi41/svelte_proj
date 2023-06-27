@@ -49,7 +49,7 @@ class CachedArray extends Array {
  * @typedef {'kill' | 'clear' | 'cwd' | 'all_commands'} Signals
  */
 
-class Terminal extends EventEmitter{
+export class Terminal extends EventEmitter{
     static terminals = new Map();
     static all_commands = [];
 
@@ -82,7 +82,7 @@ class Terminal extends EventEmitter{
 
     constructor(opts = {}) {
         super();
-        this.shell = os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash';
+        this.shell = opts.shell || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash');
         /** @type {Closable[]}*/
         this.closable = [];
         /** @type {ProcListener[]}*/
@@ -90,7 +90,7 @@ class Terminal extends EventEmitter{
         this.ctx_files = [];
         let cwd = opts.cwd || os.homedir();
         let args = [this.shell];
-        if (!opts.args)
+        if (opts.args)
             args.push(opts.args);
         args.push({
             env: process.env,
@@ -117,7 +117,7 @@ class Terminal extends EventEmitter{
                     this.ctx_files = res;
                     this.emit('cwd_changed', this.ctx_files);
                 }
-            }, 500);
+            }, {timeout: 500});
 
             /**
              * @param source {EventEmitter}
@@ -174,7 +174,7 @@ class Terminal extends EventEmitter{
         while (this.closable.length)
             this.closable.pop()?.();
 
-        super.emit('exit', prop);
+        super.emit('exit', proc);
     }
 
     /**
@@ -254,4 +254,12 @@ class Terminal extends EventEmitter{
             return std;
         return std.slice(-length);
     }
+}
+
+export const create_args = cmd=>{
+    if (os.platform() == 'win32')
+    {
+
+    } else
+        return ['-c', cmd];
 }

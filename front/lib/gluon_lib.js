@@ -38,7 +38,7 @@ export const get_zon_dirs = async () => {
     if (support_gluon)
         return await Gluon.ipc.get_zon_dirs();
 
-    return [{dirname: '.zon'}];
+    return [{dirname: 'zon1'}];
 };
 
 export const get_zon_dir = async dirname => {
