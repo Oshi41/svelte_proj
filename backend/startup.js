@@ -1,3 +1,4 @@
+import './console_patch.js';
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -8,9 +9,9 @@ const default_csp = 'default-src * self blob: data: gap:; style-src * self "unsa
 'img-src * self "unsafe-inline" blob: data: gap:; connect-src self * "unsafe-inline" blob: data: gap:;' +
 'frame-src * self blob: data: gap:;'
 /**
- * @type {ZonDir[]}
+ * @type {Map<string, Z_File_Or_Folder>}
  */
-let zon_envs = [];
+let zon_envs;
 
 const main = async ()=>{
     zon_envs = await get_zon_folders().catch(e=> {
@@ -27,15 +28,17 @@ const main = async ()=>{
     });
 
     window.ipc.get_username = ()=>os.userInfo().username;
-    window.ipc.get_zon_dirs = ()=>zon_envs.map(x=>({dirname: x.dirname}));
-    window.ipc.get_zon_dir = name => zon_envs.find(x => x.dirname == name)?.toJSON();
+    window.ipc.get_zon_dirs = ()=>Array.from(zon_envs.keys()).map(x=>({dirname: x}));
+    window.ipc.get_zon_dir = name => zon_envs.get(name)?.toJSON();
 };
 
 const save_file = ()=>{
-    let data = zon_envs[0].toJSON();
+    let t = console.time('saving zon dir');
+    const [dir, zdir] = zon_envs.entries().next().value;
+    let data = zdir.toJSON();
     let json = JSON.stringify(data, null, 2);
-    let file = path.resolve('dist', 'test_data', zon_envs[0].dirname+'.json');
+    let file = path.resolve('dist', 'test_data', path.basename(dir)+'.json');
     fs.writeFileSync(file, json, 'utf8');
+    t();
 }
-
 main();

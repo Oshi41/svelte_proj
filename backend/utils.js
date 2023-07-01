@@ -2,7 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import child_process from 'child_process';
-import nedb from '@seald-io/nedb';
+import {Nedb} from './datastore.js';
 import {pick} from '../lib/utils.js';
 
 const db_cache = new Map();
@@ -82,7 +82,7 @@ const wrap_log = (source, func, dbg_hdr = '')=>{
 export const get_db = async (name = undefined, {indexes = [], singleton = true})=>{
     if (name)
         name = resolve_rel_path(name);
-    let db = new nedb({
+    let db = new Nedb({
         inMemoryOnly: !name,
         filename: name,
     });

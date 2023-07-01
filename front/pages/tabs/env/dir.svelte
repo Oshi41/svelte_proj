@@ -3,7 +3,7 @@
     import {getContext, onMount, tick} from "svelte";
     import {get_zon_dir, subscribe_on_file_upd, send_msg} from '../../../lib/gluon_lib.js';
     import TreeView from '../../../component/tree_view/view.svelte';
-    import {dur2str, select_recursive} from '../../../../lib/utils.js';
+    import {dur2str, select_recursive, debounce} from '../../../../lib/utils.js';
     import TreeItem from './tree_item.svelte';
     import {
         Hourglass as Running,
@@ -32,7 +32,7 @@
     let flat_tree = []; // original data from server
     let map, children = [], expandAll, collapseAll; //  tree props
     let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore; // buttons
-    let selected_file_types = 'mocha selenium'.split(' '), search = ''; // filters
+    let selected_file_types = 'mocha selenium'.split(' '), search = '', _search = ''; // filters
     const {async_toast_err} = getContext('toast');
     const req_by_name = _dirname => {
         promise = get_zon_dir(_dirname)
@@ -44,7 +44,7 @@
             .finally(() => promise = null);
     };
     /**
-     * @param source {File}
+     * @param source {TreeFile}
      * @return {Array | undefined}
      */
     const convert_child = (source) => {
@@ -138,8 +138,7 @@
         <div style="padding: 1em"/>
 
         <div style="width: 40em">
-            <Search bind:value={search}
-            />
+            <Search bind:value={_search} on:change={()=>search = _search} on:clear={()=>search = _search}/>
         </div>
         <div style="width: 40em; margin-bottom: 24px">
             <MultiSelect size="xl"
