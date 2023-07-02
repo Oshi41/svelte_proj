@@ -83,6 +83,7 @@ export class Terminal extends EventEmitter{
     constructor(opts = {}) {
         super();
         this.shell = opts.shell || (os.platform() === 'win32' ? 'powershell.exe' : '/bin/bash');
+        this.title = opts.title;
         /** @type {Closable[]}*/
         this.closable = [];
         /** @type {ProcListener[]}*/
@@ -102,6 +103,8 @@ export class Terminal extends EventEmitter{
         let proc = child_process.spawn(...args);
         proc.once('spawn', () => {
             this.pid = proc.pid;
+            if (!this.title)
+                this.title = 'terminal '+pid;
             /**
              * @type {[string, Stds][]}
              */
@@ -137,6 +140,7 @@ export class Terminal extends EventEmitter{
             register_listener(proc.stdout, 'out');
             register_listener(proc.stderr, 'err');
             register_listener(proc.stdin, 'in');
+            this.emit('spawn', proc.pid);
         });
         proc.on('disconnect', () =>this.handle_close('disconnected'));
         proc.on('close', this.handle_close.bind(this));

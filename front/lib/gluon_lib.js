@@ -52,12 +52,19 @@ export const get_zon_dir = async dirname => {
 
 /**
  *
- * @param fn {Function<Array>}
+ * @param type {string} - message type id
+ * @param fn {Function<any>} - receive handler
  */
-export const subscribe_on_file_upd = (fn)=>{
-    return {
-        unsubscribe: ()=>{}
-    };
+export const subscribe_on_msg = (type, fn)=>{
+    if (support_gluon)
+    {
+        Gluon.ipc.on(type, fn);
+        return {
+            unsubscribe: ()=>{
+                Gluon.ipc.removeListener(type, fn);
+            }
+        };
+    }
 }
 
 /**
@@ -66,5 +73,13 @@ export const subscribe_on_file_upd = (fn)=>{
  * @return {Promise<void>}
  */
 export const send_msg = async (msg, ctx)=> {
+    if (support_gluon)
+        return await Gluon.ipc.send(msg, ctx);
+}
 
+export const use_ipc_fn = (name)=>{
+    if (support_gluon)
+        return Gluon.ipc[name];
+
+    return ()=>{};
 }

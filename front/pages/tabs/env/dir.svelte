@@ -1,7 +1,7 @@
 <script>
     import {Button, MultiSelect, Search, Loading} from "carbon-components-svelte";
     import {getContext, onMount, tick} from "svelte";
-    import {get_zon_dir, subscribe_on_file_upd, send_msg} from '../../../lib/gluon_lib.js';
+    import {get_zon_dir, subscribe_on_msg, use_ipc_fn} from '../../../lib/gluon_lib.js';
     import TreeView from '../../../component/tree_view/view.svelte';
     import {dur2str, select_recursive, debounce} from '../../../../lib/utils.js';
     import TreeItem from './tree_item.svelte';
@@ -29,8 +29,9 @@
     };
     export let dirname = '';
     let selectedIds = [], expandedIds = [], promise;
-    let flat_tree = []; // original data from server
-    let map, children = [], expandAll, collapseAll; //  tree props
+    let map = new Map(); // original data from server
+    let tree_map = new Map(); // tree view data
+    let children = [], expandAll, collapseAll; //  tree props
     let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore; // buttons
     let selected_file_types = 'mocha selenium'.split(' '), search = '', _search = ''; // filters
     const {async_toast_err} = getContext('toast');
@@ -38,7 +39,9 @@
         promise = get_zon_dir(_dirname)
             .then(data => {
                 let root = data.root;
-                flat_tree = select_recursive([root], x => x.children);
+                map = new Map(select_recursive([root], x => x.children)
+                    .map(x => [x.fullpath, x]));
+                map.root = map.get(root.fullpath);
             })
             .catch(async_toast_err(`Error during ${dirname} request`))
             .finally(() => promise = null);
@@ -64,7 +67,7 @@
         };
     };
     const perform_search = (s, f) => {
-        let res = flat_tree.filter(tree_item => {
+        let pairs = Array.from(map.entries()).filter(([fullpath, tree_item]) => {
             const {types} = tree_item;
             if (s) {
                 s = s.toLowerCase();
@@ -80,15 +83,19 @@
             }
             return false;
         });
-        map = new Map(res.map(x => [x.fullpath, x]));
-        map.root = flat_tree[0];
+        tree_map = new Map(pairs);
+        tree_map.root = map.root;
     };
-    const update_map = upd => {
-        for (let e of upd) {
-            map.set(e.fullpath, e);
+    /** @param upd {TreeFile | TreeFile[]}*/
+    const upd_from_srv = upd => {
+        upd = Array.isArray(upd) ? upd : [upd];
+        for (let tree_item of upd) {
+            const id = tree_item.fullpath;
+            if (map.has(id))
+                Object.assign(map.get(id), tree_item)
+            else
+                map.set(id, tree_item);
         }
-        map = new Map(map);
-        map.root = flat_tree[0];
     };
     $: req_by_name(dirname);
     $: {
@@ -105,18 +112,26 @@
     }
     $: perform_search(search, selected_file_types);
     $: {
-        children = [convert_child(map?.root)].filter(Boolean);
+        children = [convert_child(tree_map?.root)].filter(Boolean);
         tick().then(expandAll);
     }
     onMount(() => {
-        return subscribe_on_file_upd(update_map);
+        return subscribe_on_msg('file_change', upd_from_srv);
     })
     const send_cmd = name => () => {
         let items = selectedIds.map(x => map.get(x)).filter(Boolean);
-        if (items.length)
-            promise = send_msg(name, items)
-                .catch(async_toast_err('Error during sending ' + name))
-                .finally(() => promise = null)
+        if (items.length) {
+            promise = new Promise(async (resolve, reject) => {
+                try {
+                    await use_ipc_fn(name)(items);
+                    resolve();
+                } catch (e) {
+                    reject(e);
+                } finally {
+                    promise = null;
+                }
+            });
+        }
     }
 </script>
 
@@ -129,11 +144,11 @@
 
         <div style="padding: 1em"/>
 
-        <Button icon={Run} disabled={!can_run_tests} on:click={send_cmd('test.run')}>Run tests</Button>
-        <Button icon={Stop} disabled={!can_stop_tests} on:click={send_cmd('test.stop')}>Stop tests</Button>
+        <Button icon={Run} disabled={!can_run_tests} on:click={send_cmd('run_tests')}>Run tests</Button>
+        <Button icon={Stop} disabled={!can_stop_tests} on:click={send_cmd('stop_tests')}>Stop tests</Button>
 
-        <Button disabled={!can_run_tests} on:click={send_cmd('test.ignore')}>Ignore tests</Button>
-        <Button disabled={!can_stop_tests} on:click={send_cmd('test.ignore.rm')}>Delete from ignored</Button>
+        <Button disabled={!can_run_tests} on:click={send_cmd('ignore_tests')}>Ignore tests</Button>
+        <Button disabled={!can_stop_tests} on:click={send_cmd('rm_from_ignore')}>Delete from ignored</Button>
 
         <div style="padding: 1em"/>
 

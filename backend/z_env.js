@@ -2,16 +2,17 @@ import {EventEmitter} from "events";
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
+import {watch} from "chokidar";
 import {dur2str, debounce, mls, cached, sleep} from '../lib/utils.js';
 import {on_async, get_db} from "./utils.js";
 import {Terminal} from "./terminal.js";
-import {watch} from "chokidar";
+import {Store_emitter} from './store_emitter.js';
 
 /**
  * @type {Map<string, Z_File_Or_Folder>}
  */
 const all_files = new Map();
-const emitter = new EventEmitter();
+export const emitter = new Store_emitter(mls.s, (e_name, args) => args.abs_path);
 
 /**
  * @param dir {string} - abs path to checking directory
@@ -155,7 +156,7 @@ export class Z_File_Or_Folder {
      * @param e_name {string} event name to fire. Fires with updated value
      * @private
      */
-    _set_and_notify(propname, value, e_name) {
+    _set_and_notify(propname, value, e_name = 'changed') {
         if (this.is_folder)
             throw new Error(`Cannot set [${propname}] = ${value} to folder`);
 
@@ -176,7 +177,7 @@ export class Z_File_Or_Folder {
     }
 
     set is_mocha(v) {
-        this._set_and_notify('_is_mocha', v, 'is_mocha_changed');
+        this._set_and_notify('_is_mocha', v);
     }
 
     get is_selenium() {
@@ -189,7 +190,7 @@ export class Z_File_Or_Folder {
     }
 
     set is_selenium(v) {
-        this._set_and_notify('_is_selenium', v, 'is_selenium_changed');
+        this._set_and_notify('_is_selenium', v);
     }
 
     get success() {
@@ -201,7 +202,7 @@ export class Z_File_Or_Folder {
     }
 
     set success(v) {
-        this._set_and_notify('_success', v, 'success_changed');
+        this._set_and_notify('_success', v);
     }
 
     get fail() {
@@ -213,7 +214,7 @@ export class Z_File_Or_Folder {
     }
 
     set fail(v) {
-        this._set_and_notify('_fail', v, 'fail_changed');
+        this._set_and_notify('_fail', v);
     }
 
     get avg() {
@@ -225,7 +226,7 @@ export class Z_File_Or_Folder {
     }
 
     set avg(v) {
-        this._set_and_notify('_avg', v, 'avg_changed');
+        this._set_and_notify('_avg', v);
     }
 
     get is_cvs_changed() {
@@ -238,7 +239,7 @@ export class Z_File_Or_Folder {
     }
 
     set is_cvs_changed(v) {
-        this._set_and_notify('_is_cvs_changed', v, 'is_cvs_changed');
+        this._set_and_notify('_is_cvs_changed', v);
     }
 
     get last_run_failed() {
@@ -251,7 +252,11 @@ export class Z_File_Or_Folder {
     }
 
     set last_run_failed(v) {
-        this._set_and_notify('_last_run_failed', v, 'last_run_failed_changed');
+        this._set_and_notify('_last_run_failed', v);
+    }
+
+    get is_running() {
+        return !!this.test_terminal;
     }
 
     get last_run_date() {
@@ -264,7 +269,7 @@ export class Z_File_Or_Folder {
     }
 
     set last_run_date(v) {
-        this._set_and_notify('_last_run_date', v, 'last_run_date_changed');
+        this._set_and_notify('_last_run_date', v);
     }
 
     get is_ignored() {
@@ -368,6 +373,15 @@ export class Z_File_Or_Folder {
             throw new Error('cannot use file as root folder');
         console.time(`[${this.abs_path}] init_as_root`);
         this.root = zon_dir;
+
+        this.build_watcher = watch(`${this.root}/build.[!/]*/hardlink.log`, {
+            ignoreInitial: true,
+            interval: 300,
+            usePolling: true,
+            alwaysStat: true,
+        });
+        await on_async(this.build_watcher, 'ready');
+
         /**
          * Name of zon folder
          * @type {string}
@@ -479,23 +493,23 @@ export class Z_File_Or_Folder {
         ]);
         time_end();
 
+        time_end = console.time(`[${this.abs_path}] setup from test runs`);
         await sleep(151); // breath some air to finish debounce funcs
 
-        time_end = console.time(`[${this.abs_path}] setup from test runs`);
         await setup_from_tests(
-            this.flat_children.filter(x=>!x.is_folder),
+            this.flat_children.filter(x => !x.is_folder),
             runs, ignored
         );
         time_end();
         console.timeEnd(`[${this.abs_path}] init_as_root`);
     }
 
-
-
     /**
+     * Convert to tree structure
+     * @param include_children should include children?
      * @return {TreeFile}
      */
-    toJSON() {
+    to_tree_file_json(include_children = true) {
         let types = 'selenium mocha folder ignored running cvs_changed hidden'
             .split(' ').sort().filter(x => !!this['is_' + x]);
         const res = {
@@ -508,16 +522,122 @@ export class Z_File_Or_Folder {
         'last_run_failed last_run_date ignored_reason'.split(' ').map(x => [x, this[x]])
             .filter(([, x]) => !!this[x]).forEach(x => apply.push(x));
         const children = this.children;
-        if (children?.length)
-            apply.push(['children', children.map(x => x.toJSON())]);
+        if (children?.length && include_children)
+            apply.push(['children', children.map(x => x.to_tree_file_json(include_children))]);
 
         apply.forEach(([prop, val]) => res[prop] = val);
-        if (!this.root)
-            return res;
+        return res;
+    }
 
-        return {
-            root: res,
+    to_build_meta_json() {
+
+    }
+
+    /**
+     * @param cmd {'run' | 'stop' | 'ignore' | 'rm_ignore'}
+     * @param paths {string[]}
+     */
+    async handle_command(cmd, paths) {
+        paths = Array.isArray(paths) ? paths : [paths];
+        paths = paths.filter(x => x.startsWith(this.abs_path));
+        if (!paths.length)
+            return;
+        /** @type {Z_File_Or_Folder[]}*/
+        const tests = paths.map(x => all_files.get(x));
+        let docs, wrong = tests.filter(x => !x.is_mocha && x.is_selenium);
+        if (wrong.length) {
+            return {
+                err: 'Not a tests',
+                paths: wrong.map(x => x.abs_path),
+            }
+        }
+        switch (cmd) {
+            case "run":
+                if (this.is_running) {
+                    return {
+                        err: 'Already running',
+                        paths: this.flat_children?.filter(x => x.test_terminal)
+                            .map(x => x.abs_path),
+                    }
+                }
+                for (let test of tests) {
+                    let start = new Date();
+                    test.test_terminal = new Terminal({
+                        shell: 'zmocha',
+                        cwd: test.is_folder ? test.abs_path : path.dirname(test.abs_path),
+                        args: test.is_folder ? [] : ['-T', path.basename(test.abs_path)],
+                    });
+                    emitter.emit('changed', test);
+                    test.test_terminal.on('spawn', () => {
+                        start = new Date();
+                    });
+                    test.test_terminal.once('exit', async ({err, std}) => {
+                        test.test_terminal = null;
+                        const doc = {
+                            file: test.zon_relative,
+                            start,
+                            end: new Date(),
+                            result: err == 'SIGINT' ? 'canceled' : err ? 'fail' : 'success',
+                            type: test.is_mocha ? 'mocha' : 'selenium',
+                            ...err && {error: err},
+                        };
+                        await this.db.runs.insertAsync(doc);
+                        test.last_run_date = start;
+                        test.last_run_failed = doc.result == 'fail';
+                    });
+                    await on_async(test.test_terminal, 'exit');
+                }
+                break;
+            case "stop":
+                wrong = tests.filter(x => !x.is_running);
+                if (wrong.length) {
+                    return {
+                        err: 'Not running',
+                        paths: wrong.map(x => x.abs_path),
+                    }
+                }
+                for (let test of tests)
+                    test.test_terminal.write_signal('kill');
+                break;
+            case "ignore":
+                wrong = tests.filter(x => x.is_ignored);
+                if (wrong.length) {
+                    return {
+                        err: 'Already ignored',
+                        paths: wrong.map(x => x.abs_path),
+                    }
+                }
+                docs = tests.map(x=>({
+                    file: x.zon_relative,
+                    ignore_reason: 'disable test from GUI',
+                }));
+                await this.db.ignored.insertAsync(docs);
+                break;
+            case "rm_ignore":
+                wrong = tests.filter(x => !x.is_ignored);
+                if (wrong.length) {
+                    return {
+                        err: 'Not ignored',
+                        paths: wrong.map(x => x.abs_path),
+                    }
+                }
+                await this.db.ignored.removeAsync({file: {$in: tests.map(x=>x.zon_relative)}}, {multi: true});
+                break;
+            default:
+                console.debug('Unknown zon dir command:', cmd);
+                break;
+        }
+    }
+
+    /**
+     * @return {TreeFile}
+     */
+    toJSON() {
+        let res = {
+            root: this.to_tree_file_json(),
+            builds: this.to_build_meta_json(),
         };
+        return res;
     }
 }
 
