@@ -6,7 +6,7 @@
         Loading,
         Breadcrumb,
         BreadcrumbItem,
-        DataTable, TooltipDefinition,
+        DataTable, TooltipDefinition, Popover,
     } from "carbon-components-svelte";
     import {getContext} from "svelte";
     import {Run, Stop} from "carbon-icons-svelte";
@@ -30,7 +30,7 @@
     let promise;
     let map = new Map(); // original data from server
     let breadcrumbs = [], selected_folder_id, rows = [], selectedIds = []; //  table props
-    let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore; // buttons
+    let can_run_tests, can_stop_tests, can_add_to_ignore, can_rm_from_ignore, is_selection_open; // buttons
     let selected_file_types = 'mocha selenium'.split(' '), search = '', _search = ''; // filters
     const {async_toast_err} = getContext('toast');
     const send_cmd = name => () => {
@@ -240,22 +240,27 @@
                         </BreadcrumbItem>
                     {/each}
                 </Breadcrumb>
-                <TooltipDefinition>
-                    <svelte:fragment slot="tooltip">
-                        <ul>
+                <div style:position="relative">
+                    <Popover bind:open={is_selection_open}>
+                        <ul style="min-width: 220px; height: 120px; padding: 8px; overflow-x: unset; overflow-y: auto">
                             {#each selectedIds as name}
                                 {@const row = map.get(name)}
                                 <!-- save pkg for file reference -->
                                 {@const rel_path = row?.fullpath?.substring(map?.root?.fullpath?.length - 3)}
-                                <li style="display: flex; flex-direction: row; gap: 1em">
+                                <li style="display: flex; flex-direction: row;">
                                     <TypesCell cell={{key: 'types'}} {row}/>
-                                    {rel_path}
+                                    <p style:margin-left="1em">{rel_path}</p>
                                 </li>
                             {/each}
                         </ul>
-                    </svelte:fragment>
-                    <p>Currently selected:</p>
-                </TooltipDefinition>
+                    </Popover>
+                    <Button on:click={e=>{
+                        e.preventDefault();
+                        is_selection_open = !is_selection_open
+                    }}>
+                        Currently selected:
+                    </Button>
+                </div>
             </div>
         </svelte:fragment>
         <svelte:fragment slot="cell" let:row let:cell>
