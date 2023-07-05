@@ -76,3 +76,14 @@ export const lc_json_writable_store = (lc_key, data = {}, save_props = '')=>{
 
     return setContext(lc_key, lc_json_writable(lc_key, data, save_props));
 };
+
+/**
+ * @param selector {HTMLElementTagNameMap}
+ * @param style {CSSStyleDeclaration}
+ * @return {function(HTMLElement, any): {update: function(any)}}
+ */
+export const runtime_set_style = (selector, style)=>node=>{
+    let target = node.ownerDocument.querySelector(selector);
+    if (target?.style)
+        Object.assign(target.style, style);
+}

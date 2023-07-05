@@ -81,12 +81,12 @@ export const use_ipc_fn = (name) => {
     if (support_gluon)
         return Gluon.ipc[name];
 
-    return '';
+    return ()=>{};
 }
 
 export const path_dirname = async (path) => {
     if (support_gluon)
-        return await Gluon.ipc.path.dirname(path);
+        return await Gluon.ipc.dirname(path);
 
     path = path.split('/');
     path.pop();

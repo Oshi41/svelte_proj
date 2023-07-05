@@ -32,7 +32,8 @@ const main = async () => {
         file.to_tree_file_json(false)));
 
     window.ipc.get_username = () => os.userInfo().username;
-    window.ipc.get_zon_dirs = () => Array.from(zon_envs.keys()).map(x => ({dirname: x}));
+    window.ipc.get_zon_dirs = () => Array.from(zon_envs.keys())
+        .map(x => ({dirname: x, internal: x == '.zon'}));
     window.ipc.get_zon_dir = name => zon_envs.get(name)?.toJSON();
     const run_for_each = (cmd) => (...args) => {
         Array.from(zon_envs.values()).forEach(x => x.handle_command(cmd, ...args));
@@ -42,7 +43,7 @@ const main = async () => {
     window.ipc.stop_tests = run_for_each('stop');
     window.ipc.ignore_tests = run_for_each('ignore');
     window.ipc.rm_from_ignore = run_for_each('rm_ignore');
-
+    window.ipc.expose('dirname', path.dirname);
 };
 
 const save_file = () => {

@@ -143,7 +143,7 @@ export class Z_File_Or_Folder {
         if (os.platform() == 'win32') {
 
         } else {
-            if (/(^|\/)\.[^\/\.]/g.test(this.abs_path))
+            if (/(^|\/)\.[^\/\.]/g.test(path.basename(this.abs_path)))
                 return true;
         }
         return false;
@@ -169,8 +169,7 @@ export class Z_File_Or_Folder {
 
     get is_mocha() {
         if (this.is_folder) {
-            return this.children.filter(x => !x.is_folder)
-                .some(x => x.is_mocha);
+            return this.children.some(x => x.is_mocha);
         }
 
         return this._is_mocha;
@@ -182,8 +181,7 @@ export class Z_File_Or_Folder {
 
     get is_selenium() {
         if (this.is_folder) {
-            return this.children.filter(x => !x.is_folder)
-                .some(x => x.is_selenium);
+            return this.children.some(x => x.is_selenium);
         }
 
         return this._is_selenium;
@@ -231,8 +229,7 @@ export class Z_File_Or_Folder {
 
     get is_cvs_changed() {
         if (this.is_folder) {
-            return this.children.filter(x => !x.is_folder)
-                .some(x => x.is_cvs_changed);
+            return this.children.some(x => x.is_cvs_changed);
         }
 
         return this._is_cvs_changed;
@@ -672,7 +669,7 @@ export const get_zon_folders = async () => {
     children = children.filter(x => x && x.endsWith('.zon'));
     let res = new Map(children.map(x => {
         const pkg_path = path.join(x, 'pkg');
-        return [x, new Z_File_Or_Folder(
+        return [path.basename(x), new Z_File_Or_Folder(
             pkg_path,
             fs.statSync(pkg_path),
             path.relative(x, pkg_path),

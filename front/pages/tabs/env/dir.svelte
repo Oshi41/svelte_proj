@@ -1,40 +1,30 @@
 <script>
     import {
-        Button, MultiSelect, Search, Loading, Breadcrumb,
-        BreadcrumbItem, DataTable, TooltipDefinition, OrderedList, ListItem
+        Button,
+        MultiSelect,
+        Search,
+        Loading,
+        Breadcrumb,
+        BreadcrumbItem,
+        DataTable, TooltipDefinition,
     } from "carbon-components-svelte";
-    import {getContext, onMount, tick} from "svelte";
-    import {
-        get_zon_dir, subscribe_on_msg, use_ipc_fn,
-        path_dirname,
-    } from '../../../lib/gluon_lib.js';
-    import TreeView from '../../../component/tree_view/view.svelte';
-    import {
-        dur2str, select_recursive,
-        sequence_equal
-    } from '../../../../lib/utils.js';
-    import TreeItem from './tree_item.svelte';
-    import {
-        Hourglass as Running,
-        Wikis as Selenium,
-        Cafe as Mocha,
-        Folder,
-        ExpandAll,
-        CollapseAll,
-        Run,
-        Stop,
-        AccessibilityColor as Hidden,
-        FetchUploadCloud as Cvs_changed, AccessibilityColor,
-    } from "carbon-icons-svelte";
+    import {getContext} from "svelte";
+    import {Run, Stop} from "carbon-icons-svelte";
+    import {get_zon_dir, use_ipc_fn, path_dirname,} from '../../../lib/gluon_lib.js';
+    import {runtime_set_style} from '../../../lib/svelte_utils.js';
+    import {select_recursive, debounce, sequence_equal} from '../../../../lib/utils.js';
+    import TypesCell from './types_cell.svelte';
+    import FilenameCell from './filename_cell.svelte';
+    import TestStatCell from './test_stat_cell.svelte';
 
     const icon_types = {
-        mocha: [Mocha, 'Mocha files'],
-        selenium: [Selenium, 'Selenium files'],
-        running: [Running, 'Running tests'],
-        folder: [Folder, 'Only folders'],
-        ignore: [Stop, 'Ignored tests'],
-        hidden: [Hidden, 'Hidden file'],
-        cvs_changed: [Cvs_changed, 'CVS changed file'],
+        mocha: 'Mocha files',
+        selenium: 'Selenium files',
+        running: 'Running tests',
+        folder: 'Only folders',
+        ignore: 'Ignored tests',
+        hidden: 'Hidden file',
+        cvs_changed: 'CVS changed file',
     };
     export let dirname = '';
     let promise;
@@ -108,7 +98,6 @@
         return {
             ...root,
             id: root?.fullpath,
-            template: TreeItem,
             children,
         };
     };
@@ -153,21 +142,18 @@
         }
         selected_folder_id = child.fullpath;
     };
-    const manage_select = ({fullpath: id}) =>(e)=>{
-        e.stopPropagation();
-        const already_sel = selectedIds.includes(id);
-        selectedIds = already_sel
-            ? selectedIds.filter(x=>x!=id)
-            : selectedIds.concat([id]);
-    };
-    const manage_navigation = item=>e=>{
-        const {fullpath: id, types} = item;
-        if (types.includes('folder'))
-        {
-            e.stopPropagation();
-            navigate_to_child(item);
+    /**
+     * @param left {string[]}
+     * @param right {string[]}
+     */
+    const types_sort_fn = (left, right) => {
+        for (let key of 'folder cvs_changed selenium mocha hidden ignored'.split(' ')) {
+            const [l, r] = [left, right].map(x => x.includes(key));
+            if (l != r)
+                return +l - +r;
         }
-    };
+        return 0;
+    }
     $: {
         render_tree(map, search, selected_file_types, selected_folder_id).then(x => {
             const {children, crumbs, sel_folder} = x;
@@ -187,13 +173,29 @@
     // onMount(() => {
     //     return subscribe_on_msg('file_change', upd_from_srv);
     // })
-
+    // fix to change table-layout property
+    // https://github.com/carbon-design-system/carbon-components-svelte/blob/master/src/DataTable/DataTable.svelte#L283
+    const action = runtime_set_style('table', {tableLayout: 'unset'});
+    const select_on_click = debounce(({fullpath: id} = {}) => {
+        const already_sel = selectedIds.includes(id);
+        selectedIds = already_sel
+            ? selectedIds.filter(x => x != id)
+            : selectedIds.concat([id]);
+    }, {timeout: 140});
+    const navigate_on_dbl_click = (e, row) => {
+        if (row.types.includes('folder')) {
+            e.stopPropagation();
+            select_on_click.cancel();
+            navigate_to_child(row);
+        }
+    }
 </script>
 
 {#if !!promise}
     <Loading/>
 {:else}
-    <div style="display: flex; flex-direction: row; gap: 1px; align-items: center; align-content: center">
+    <div style="display: flex; flex-direction: row; gap: 1px; align-items: center; align-content: center"
+         use:action>
         <Button icon={Run} disabled={!can_run_tests} on:click={send_cmd('run_tests')}>Run tests</Button>
         <Button icon={Stop} disabled={!can_stop_tests} on:click={send_cmd('stop_tests')}>Stop tests</Button>
 
@@ -209,84 +211,61 @@
             <MultiSelect size="xl"
                          bind:selectedIds={selected_file_types}
                          titleText="File type"
-                         items={Array.from(Object.entries(icon_types)).map(([id, [, text]])=>({id, text}))}
+                         items={Array.from(Object.entries(icon_types)).map(([id, text])=>({id, text}))}
             />
         </div>
 
         <div style="width: 100%"/>
     </div>
     <DataTable headers={[
-        {value: 'Filename', key: 'filename', width: '90%'},
-        {value: 'Type', key: 'type', width: "120px"},
-    ]} rows={rows}
+               {value: 'Type', key: 'types', width: '120px', sort: types_sort_fn},
+               {value: 'File name', key: 'filename'},
+               {value: 'Test stats', key: 'teststats'},
+               ]}
+               rows={rows}
                sortable
                selectable
                size="short"
                bind:selectedRowIds={selectedIds}>
         <svelte:fragment slot="title">
-            <Breadcrumb>
-                {#each breadcrumbs as c}
-                    {@const isCurrentPage = breadcrumbs.indexOf(c) == (breadcrumbs.length - 1)}
-                    <BreadcrumbItem {isCurrentPage}
-                                    on:click={()=>selected_folder_id = c.fullpath}
-                                    key={c.fullpath}>
-                        {c.filename}
-                    </BreadcrumbItem>
-                {/each}
-            </Breadcrumb>
+            <div style="display: flex; flex-direction: column; align-items: flex-start">
+                <Breadcrumb>
+                    {#each breadcrumbs as c, i}
+                        {@const isCurrentPage = i == (breadcrumbs.length - 1)}
+                        <BreadcrumbItem {isCurrentPage}>
+                            <Button kind="ghost" size="small"
+                                    on:click={()=>selected_folder_id = c.fullpath}>
+                                {c.filename}
+                            </Button>
+                        </BreadcrumbItem>
+                    {/each}
+                </Breadcrumb>
+                <TooltipDefinition>
+                    <svelte:fragment slot="tooltip">
+                        <ul>
+                            {#each selectedIds as name}
+                                {@const row = map.get(name)}
+                                <!-- save pkg for file reference -->
+                                {@const rel_path = row?.fullpath?.substring(map?.root?.fullpath?.length - 3)}
+                                <li style="display: flex; flex-direction: row; gap: 1em">
+                                    <TypesCell cell={{key: 'types'}} {row}/>
+                                    {rel_path}
+                                </li>
+                            {/each}
+                        </ul>
+                    </svelte:fragment>
+                    <p>Currently selected:</p>
+                </TooltipDefinition>
+            </div>
         </svelte:fragment>
         <svelte:fragment slot="cell" let:row let:cell>
-            {@const is_changed = row.types.includes('cvs_changed')}
-            {@const is_folder = row.types.includes('folder')}
-            {@const is_selenium = row.types.includes('selenium')}
-            {@const is_mocha = row.types.includes('mocha')}
-            {@const is_ignored = row.types.includes('ignored')}
-            {@const is_hidden = row.types.includes('hidden')}
-            <div style="background: transparent"
-                 on:dblclick={manage_navigation(row)}
-                 on:click={manage_select(row)}>
-                {#if cell.key == 'type'}
-                    <div style="flex-direction: row; display: flex; gap: 4px">
-                        {#if is_changed}
-                            <TooltipDefinition tooltipText="Changed file">
-                                <Cvs_changed style="fill: var(--cds-support-03)"/>
-                            </TooltipDefinition>
-                        {/if}
-                        {#if is_folder}
-                            <TooltipDefinition tooltipText="Folder">
-                                <Folder/>
-                            </TooltipDefinition>
-                        {/if}
-                        {#if is_ignored}
-                            <TooltipDefinition tooltipText="Excluded from runs">
-                                <Stop/>
-                            </TooltipDefinition>
-                        {/if}
-                        {#if is_hidden}
-                            <TooltipDefinition tooltipText="Hidden system path">
-                                <Hidden style="fill: var(--cds-icon-02)"/>
-                            </TooltipDefinition>
-                        {/if}
-                        {#if is_selenium}
-                            <TooltipDefinition tooltipText="Contains selenium tests">
-                                <Selenium style="fill: var(--cds-support-01)"/>
-                            </TooltipDefinition>
-                        {/if}
-                        {#if is_mocha}
-                            <TooltipDefinition tooltipText="Contains mocha tests">
-                                <Mocha style="fill: var(--cds-link-02)"/>
-                            </TooltipDefinition>
-                        {/if}
-                    </div>
-                {:else if cell.key == 'filename'}
-                    {#if is_folder}
-                        <u>{cell.value}</u>
-                    {:else if is_ignored}
-                        <s>{cell.value}</s>
-                    {:else}
-                        {cell.value}
-                    {/if}
-                {/if}
+            <div style="background: transparent;"
+                 on:click={()=>select_on_click(row)}
+                 on:dblclick={e=>navigate_on_dbl_click(e, row)}>
+
+                <TypesCell {row} {cell}/>
+                <FilenameCell {row} {cell} on_folder_click={e=>navigate_on_dbl_click(e, row)}/>
+                <TestStatCell {row} {cell}/>
             </div>
         </svelte:fragment>
     </DataTable>
