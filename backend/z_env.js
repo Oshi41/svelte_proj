@@ -1,4 +1,3 @@
-import {EventEmitter} from "events";
 import path from 'path';
 import os from 'os';
 import fs from 'fs';
@@ -7,6 +6,8 @@ import {dur2str, debounce, mls, cached, sleep} from '../lib/utils.js';
 import {on_async, get_db} from "./utils.js";
 import {Terminal} from "./terminal.js";
 import {Store_emitter} from './store_emitter.js';
+import {lazy} from './lazy.js';
+
 
 /**
  * @type {Map<string, Z_File_Or_Folder>}
@@ -604,7 +605,7 @@ export class Z_File_Or_Folder {
                         paths: wrong.map(x => x.abs_path),
                     }
                 }
-                docs = tests.map(x=>({
+                docs = tests.map(x => ({
                     file: x.zon_relative,
                     ignore_reason: 'disable test from GUI',
                 }));
@@ -618,7 +619,7 @@ export class Z_File_Or_Folder {
                         paths: wrong.map(x => x.abs_path),
                     }
                 }
-                await this.db.ignored.removeAsync({file: {$in: tests.map(x=>x.zon_relative)}}, {multi: true});
+                await this.db.ignored.removeAsync({file: {$in: tests.map(x => x.zon_relative)}}, {multi: true});
                 break;
             default:
                 console.debug('Unknown zon dir command:', cmd);
@@ -666,15 +667,17 @@ export const get_zon_folders = async () => {
             throw e;
         });
     children = await Promise.all(children.map(x => is_zon_root(x).then(y => y ? x : undefined)));
-    children = children.filter(x => x && x.endsWith('.zon'));
-    let res = new Map(children.map(x => {
-        const pkg_path = path.join(x, 'pkg');
-        return [path.basename(x), new Z_File_Or_Folder(
-            pkg_path,
-            fs.statSync(pkg_path),
-            path.relative(x, pkg_path),
-        )];
-    }));
-    await Promise.all(Array.from(res.entries()).map(([dir, x]) => x.init_as_root(dir)));
-    return res;
+    children = children.filter(Boolean).map(x => {
+        return [path.basename(x), lazy(async () => {
+            const pkg_path = path.join(x, 'pkg');
+            let res = new Z_File_Or_Folder(
+                pkg_path,
+                fs.statSync(pkg_path),
+                path.relative(x, pkg_path),
+            );
+            await res.init_as_root(x);
+            return res;
+        })];
+    });
+    return new Map(children);
 };

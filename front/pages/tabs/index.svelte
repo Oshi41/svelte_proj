@@ -1,18 +1,18 @@
 <script>
-    import {TabPanel, Tab} from '../../component/tab_panel';
+    import {ContentSwitcher, Switch} from 'carbon-components-svelte';
     import Attendance from './att.svelte';
-    import Environment from './env/index.svelte';
+    import Environment from './zdir/index.svelte';
     import Settings from './settings.svelte';
+
+    let selectedIndex = 0;
+    const tabs = [Attendance, Environment, Settings];
+
 </script>
 
-<TabPanel>
-    <Tab path="/att" text="Attendance">
-        <Attendance/>
-    </Tab>
-    <Tab path={'/env'} text="Environment">
-        <Environment/>
-    </Tab>
-    <Tab path="/settings" text="Settings">
-        <Settings/>
-    </Tab>
-</TabPanel>
+<ContentSwitcher bind:selectedIndex>
+    <Switch text="Attendance"/>
+    <Switch text="Environment"/>
+    <Switch text="Settings"/>
+</ContentSwitcher>
+
+<svelte:component this={tabs[selectedIndex]}/>

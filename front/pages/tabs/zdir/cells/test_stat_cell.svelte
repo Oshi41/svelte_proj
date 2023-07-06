@@ -10,7 +10,7 @@
         Error
     } from "carbon-icons-svelte";
     import {Loading, TooltipDefinition} from "carbon-components-svelte";
-    import {dur2str, date_format} from "../../../../lib/utils.js";
+    import {dur2str, date_format} from "../../../../../lib/utils.js";
 
     export let cell;
     /**

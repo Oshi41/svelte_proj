@@ -31,3 +31,21 @@
  * @property {string} file zon-relative path
  * @property {string} ignore_reason why ignoring test
  */
+
+/**
+ * @typedef {Object} ZDir
+ * @property {TreeFile} root
+ * @property {any} builds
+ */
+
+/**
+ * @typedef {Object} ZonIPC
+ * @property {()=>Promise<string>} get_username
+ * @property {()=>Promise<{dirname: string, internal: boolean}[]>} get_zon_dirs
+ * @property {(dirname: string)=>Promise<ZDir>} get_zon_dir
+ * @property {(ids: string | string[])=>Promise<number>} run_tests
+ * @property {(ids: string | string[])=>Promise<boolean>} stop_tests
+ * @property {(ids: string | string[])=>Promise<boolean>} ignore_tests
+ * @property {(ids: string | string[])=>Promise<boolean>} rm_from_ignore
+ * @property {(path: string)=>Promise<string>} dirname
+ */

@@ -19,7 +19,7 @@ const main = async () => {
         console.error('CRIT:', e);
         throw e;
     });
-    save_file();
+    // save_file();
     let file = path.resolve('dist', 'index.html');
     const window = await Gluon.open(file, {
         allowHTTP: true,
@@ -34,7 +34,13 @@ const main = async () => {
     window.ipc.get_username = () => os.userInfo().username;
     window.ipc.get_zon_dirs = () => Array.from(zon_envs.keys())
         .map(x => ({dirname: x, internal: x == '.zon'}));
-    window.ipc.get_zon_dir = name => zon_envs.get(name)?.toJSON();
+    window.ipc.get_zon_dir = async name => {
+        let lazy = zon_envs.get(name);
+        if (!lazy)
+            return;
+        let res = await lazy();
+        return res.toJSON();
+    };
     const run_for_each = (cmd) => (...args) => {
         Array.from(zon_envs.values()).forEach(x => x.handle_command(cmd, ...args));
     };

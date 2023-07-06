@@ -1,12 +1,11 @@
 <script>
-    import {Button} from "carbon-components-svelte";
+    import {Button, ContentSwitcher, Switch} from "carbon-components-svelte";
     import Refresh from "carbon-icons-svelte/lib/UpdateNow.svelte";
     import {getContext} from "svelte";
-    import {Tab, TabPanel} from '../../../component/tab_panel/index.js';
     import Dir from './dir.svelte';
     import {get_zon_dirs} from '../../../lib/gluon_lib.js';
 
-    let dirs = [], promise, selected_path;
+    let dirs = [], promise, selected_path, selectedIndex = 0;
     const {async_toast_err} = getContext('toast');
     const handle_select = ()=>{
         let paths = dirs.map(x=>'/'+x.dirname);
@@ -27,11 +26,10 @@
         <h3 style="width: 100%">Environment</h3>
         <Button icon={Refresh} skeleton={!!promise} iconDescription="Update"/>
     </div>
-    <TabPanel bind:selected_path>
-        {#each dirs as {dirname, text}}
-            <Tab path={'/'+dirname} text={dirname}>
-                <Dir {dirname}/>
-            </Tab>
+    <ContentSwitcher bind:selectedIndex>
+        {#each dirs as {dirname}}
+            <Switch text={dirname}/>
         {/each}
-    </TabPanel>
+    </ContentSwitcher>
+    <Dir dirname={dirs[selectedIndex]?.dirname}/>
 </div>

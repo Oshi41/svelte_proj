@@ -38,14 +38,14 @@ export const get_zon_dirs = async () => {
     if (support_gluon)
         return await Gluon.ipc.get_zon_dirs();
 
-    return [{dirname: 'zon1'}, {dirname: '.zon'}];
+    return [{dirname: 'zon1'}, {dirname: '.zon', internal: true}];
 };
 
 export const get_zon_dir = async dirname => {
     if (support_gluon)
         return await Gluon.ipc.get_zon_dir(dirname);
 
-    let filepath = `../../dist/test_data/${dirname}.json`;
+    let filepath = `../../test_data/${dirname}.json`;
     let module = await import(filepath);
     return module;
 };
