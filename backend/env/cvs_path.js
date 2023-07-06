@@ -55,6 +55,13 @@ export class Cvs_path extends Path_base {
             ?.recheck_cvs();
     }
 
+    async _zon_init() {
+        await super._zon_init();
+
+        if (this.is_folder)
+            await this._request_cvs_status();
+    }
+
     toJSON() {
         let json = super.toJSON();
         if (this.is_cvs_changed)

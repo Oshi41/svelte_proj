@@ -11,7 +11,8 @@
  * @property {number} fail? - total fail runs
  * @property {number} avg? - avg run time
  * @property {string} ignored_reason? - If types.includes('ignored'), reason why. Not inherit for dirs!!!
- * @property {boolean} last_run_failed? - last test run was failed
+ * @property {string} last_error? - last test run was failed
+ * @property {Date} ETA? - Approximate finish time
  * @property {Date} last_run_date? - last test run date
  * @property {TreeFile[] | undefined} children
  */

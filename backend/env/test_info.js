@@ -1,13 +1,16 @@
 import fs from 'fs';
 import {Path_base} from "./path_base.js";
 import {get_db} from "../utils.js";
+import {maxBy} from "../../lib/utils.js";
 
-
+const props = 'avg fail success is_selenium is_mocha is_ignored last_error last_run_date'.split(' ');
+const not_null_reduce = arr=>arr.find(Boolean);
 const sum_reduce = arr => arr.filter(Number.isFinite).reduce((p, c) => p + c, 0);
-const avg_reduce = arr =>{
+const avg_reduce = arr => {
     arr = arr.filter(Number.isFinite);
     return sum_reduce(arr) / arr.length;
 };
+
 
 export class Test_info extends Path_base {
     constructor(...props) {
@@ -20,6 +23,9 @@ export class Test_info extends Path_base {
         this._setup_tree_prop('avg', avg_reduce);
         this._setup_tree_prop('fail', sum_reduce);
         this._setup_tree_prop('success', sum_reduce);
+
+        this._setup_tree_prop('last_error', not_null_reduce);
+        this._setup_tree_prop('last_run_date', maxBy);
     }
 
     /**
@@ -55,8 +61,7 @@ export class Test_info extends Path_base {
 
         runs = runs.filter(x => x.file == this.relative_path);
         ignored = ignored.filter(x => x.file == this.relative_path);
-        if (!runs.length)
-        {
+        if (!runs.length) {
             const f_type = await this.get_file_test_type();
             if (!f_type)
                 return;
@@ -65,16 +70,19 @@ export class Test_info extends Path_base {
             to_return = f_type.runs[0];
         }
 
-        const all_runs = runs.filter(x=>x.result == 'success' || x.result == 'fail');
-        const success_runs = all_runs.filter(x=>x.result == 'success');
+        const all_runs = runs.filter(x => x.result == 'success' || x.result == 'fail');
+        const success_runs = all_runs.filter(x => x.result == 'success');
+        const file_type = runs.find(x => x.result == 'init').type;
+        const last_run = maxBy(runs, x=>x.start);
 
-        const file_type = runs.find(x=>x.result == 'init').type;
         this.is_selenium = file_type == 'selenium';
         this.is_mocha = file_type == 'mocha';
 
         this.success = success_runs.length;
         this.fail = all_runs.length - this.success;
-        this.avg = avg_reduce(success_runs.map(x=>x.end - x.start));
+        this.avg = avg_reduce(success_runs.map(x => x.end - x.start));
+        this.last_error = last_run?.result == 'fail' ? last_run.error : undefined;
+        this.last_run_date = last_run?.start;
 
         this.is_ignored = !!ignored.length;
         return to_return;
@@ -104,7 +112,7 @@ export class Test_info extends Path_base {
         end();
 
         end = this.time('setup tests');
-        let test_results = await Promise.all(this.flat_children.map(x=>x._setup_from_test?.(runs, ignored)));
+        let test_results = await Promise.all(this.flat_children.map(x => x._setup_from_test?.(runs, ignored)));
         test_results = test_results.filter(Boolean);
         if (test_results.length)
             await this.db.runs.insertAsync(test_results);
@@ -118,9 +126,20 @@ export class Test_info extends Path_base {
                 this.db.runs.findAsync(q),
                 this.db.ignored.findAsync(q),
             );
-            docs.forEach(x=>x._setup_from_test(runs, ignored));
+            docs.forEach(x => x._setup_from_test(runs, ignored));
             end();
         });
         end();
+    }
+
+    toJSON() {
+        let json = super.toJSON();
+        for (let prop of props) {
+            let val = this[prop];
+            const types = 'string boolean object';
+            if (types.includes(typeof val) || Number.isFinite(val))
+                json[prop] = val;
+        }
+        return json;
     }
 }
