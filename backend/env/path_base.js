@@ -1,6 +1,7 @@
-import './console_patch.js';
+import '../console_patch.js';
 import {watch} from "chokidar";
 import fs from "fs";
+import os from "os";
 import {on_async} from "../utils.js";
 import path from "path";
 import {debounce, sequence_equal, sleep} from "../../lib/utils.js";
@@ -16,42 +17,33 @@ export const dir_sort_fn = root => (left, right) => {
     let compare = left.length - right.length;
     if (compare)
         return compare;
-    return l.pop()?.localeCompare(right?.pop()) || 0;
+    return left.pop()?.localeCompare(right?.pop()) || 0;
 }
 
 export class Path_base {
-    constructor(zon_dor, abs_path, stat) {
+    constructor(zon_dir, abs_path, stat) {
         this.abs_path = abs_path;
-        this.relative_path = path.relative(zon_dor, abs_path);
+        this.relative_path = path.relative(zon_dir, abs_path);
         this.stat = stat || fs.statSync(abs_path);
         if (this.is_folder) {
-            /**
-             * @type {string[]}
-             * @private
-             */
             this._children_keys = [];
             this._flat_children_keys = [];
-            this.on_children_changed = () => {
-                console.debug(`[${this.abs_path}] children changed`);
-            };
-            this.recache = debounce(() => {
-                let children_keys = Array.from(all_files.keys())
-                    .filter(x => x.startsWith(this.abs_path) && x != this.abs_path);
-                let flat_children_keys = this._flat_children_keys
-                    .filter(x => !path.relative(this.abs_path, x).includes('/'));
-
-                if (sequence_equal(children_keys, this._children_keys, x => x.abs_path)
-                    && sequence_equal(flat_children_keys, this._flat_children_keys, x => x.abs_path))
-                    return;
-
-                this._children_keys = children_keys;
-                this._flat_children_keys = flat_children_keys;
-                this.parent?.recache();
-                this.on_children_changed();
-            }, {timeout: 150});
         }
         all_files.set(this.abs_path, this);
-        this.parent?.recache();
+    }
+
+    _recalc_children(call_parent = false)
+    {
+        if (this.is_folder)
+        {
+            this._flat_children_keys = Array.from(all_files.keys())
+                .filter(x => x.startsWith(this.abs_path) && x != this.abs_path);
+            this._children_keys = this._flat_children_keys
+                .filter(x => !path.relative(this.abs_path, x).includes('/'));
+        }
+
+        if (call_parent)
+            this.parent?._recalc_children();
     }
 
     /**
@@ -75,6 +67,15 @@ export class Path_base {
      */
     get parent() {
         return all_files.get(path.dirname(this.abs_path));
+    }
+
+    get is_hidden() {
+        if (this.parent?.is_hidden)
+            return true;
+        if (os.platform() == 'win32') {
+            return false;
+        }
+        return /(^|\/)\.[^\/\.]/g.test(path.basename(this.abs_path));
     }
 
     /**
@@ -125,20 +126,21 @@ export class Path_base {
         let dirs = Object.keys(watched).sort(dir_sort_fn(this.zon_dir))
             .filter(x => x.startsWith(this.abs_path) && x != this.abs_path);
         dirs.forEach(x => {
-            let child = this._create_child(this.zon_dir, x, fs.statSync(x));
+            let child = new this.constructor(this.zon_dir, x, fs.statSync(x));
             all_files.set(x, child);
         });
         end();
         end = this.time('rest files init');
         for (let dir of dirs) {
             for (let abs_path of watched[dir].map(x => path.join(dir, x))) {
-                let child = this._create_child(this.zon_dir, abs_path, fs.statSync(abs_path));
+                let child = new this.constructor(this.zon_dir, abs_path, fs.statSync(abs_path));
                 all_files.set(abs_path, child);
             }
         }
         end();
         end = this.time('additional init');
-        await sleep(150); // breath here for recache end
+        let all_tree = [this, ...this.flat_children];
+        all_tree.forEach(x=>x._recalc_children()); // build tree
         let promises = [this, ...this.flat_children].map(x => x.additional_init());
         await Promise.all(promises);
         end();
@@ -153,7 +155,7 @@ export class Path_base {
      * @private
      */
     _create_child(zon_dir, abs_path, stat) {
-        this.constructor(zon_dir, abs_path, stat);
+        return new this.constructor(zon_dir, abs_path, stat);
     }
 
     /**
@@ -167,67 +169,80 @@ export class Path_base {
         switch (e_name) {
             case "add":
             case "addDir":
-                let child = this._create_child(this.zon_dir, path, stats);
-                all_files.set(path, child);
+                let child = new this.constructor(this.zon_dir, path, stats);
+                child._recalc_children(true);
+                await child.additional_init();
                 return;
 
             case "unlink":
             case "unlinkDir":
                 let parent = all_files.get(path)?.parent;
                 all_files.delete(path);
-                parent?.recache();
+                parent?._recalc_children(true);
                 break;
 
             case "change":
                 await this.on_path_change();
+                await this.after_path_changed();
                 break;
         }
     }
 
-    async on_path_change() {
+    /**
+     * Called when changes need to be sent to client
+     * @return {Promise<void>}
+     */
+    async after_path_changed() {
 
     }
 
+    async on_path_change() {
+    }
+
     /**
-     * @param name {string} prop name
-     * @param inner_name {string} backing prop name
-     * @param reduce {function(arr: any[]): any} reduce fn
-     * @return {*}
+     * @param name {string}
+     * @param reduce {(array)=>any}
+     * @return {any}
      * @private
      */
-    _setup_tree_prop(name, reduce, inner_name){
-        if (!inner_name)
-            inner_name = '_'+name;
-        if (reduce)
-            reduce = arr=>arr.find();
-        Object.defineProperty(this, name, {
-            get() {
-                if (!this.is_folder)
-                    return this[inner_name];
-                let children_vals = this.children.map(x => x[name]);
-                return reduce(children_vals);
-            },
-            set(v) {
-                if (!this.is_folder)
-                    return this[inner_name] = v;
-            }
-        });
+    _get(name, reduce) {
+        if (!this.is_folder)
+            return this[name];
+        if (!reduce)
+            reduce = arr => arr.find(Boolean);
+
+        const direct = this.children.filter(x => x.is_folder);
+        return reduce(direct.map(x => x[name]));
+    }
+
+    _set(name, value) {
+        if (!this.is_folder && this[name] != value) {
+            this[name] = value;
+            return true;
+        }
+    }
+
+    async _set_w_notify(name, value) {
+        if (this._set(name, value))
+            await this.after_path_changed();
     }
 
     /**
      * @return {TreeFile}
      */
-    toJSON(){
+    toJSON() {
+        /** @type {TreeFile}*/
         const res = {
             filename: path.basename(this.abs_path),
             fullpath: this.abs_path,
             types: []
         };
-        if (this.is_folder)
-        {
+        if (this.is_folder) {
             res.types.push('folder');
             res.children = this.children.map(x => x.toJSON());
         }
+        if (this.is_hidden)
+            res.types.push('hidden');
         return res;
     }
 }

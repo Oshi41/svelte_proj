@@ -6,11 +6,17 @@ import {Terminal} from "../terminal.js";
 export class Cvs_path extends Path_base {
     constructor(zon_dor, abs_path, stat) {
         super(zon_dor, abs_path, stat);
-        this._setup_tree_prop('is_cvs_changed');
         if (this.is_folder) {
             this.recheck_cvs = debounce(this._request_cvs_status.bind(this),
                 {timeout: 10*mls.s});
         }
+    }
+
+    get is_cvs_changed() {
+        return this._get('_is_cvs_changed');
+    }
+    set is_cvs_changed(v) {
+        this._set_w_notify('_is_cvs_changed', v);
     }
 
     async _request_cvs_status() {

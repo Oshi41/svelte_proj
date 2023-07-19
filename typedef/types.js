@@ -15,6 +15,8 @@
  * @property {Date} ETA? - Approximate finish time
  * @property {Date} last_run_date? - last test run date
  * @property {TreeFile[] | undefined} children
+ * @property {[name: string]: {date: Date, built_today: boolean}} build_meta? - only for zon root folder
+ * @property {boolean | undefined | string} code_style - code style check result (true if ok, undef if not run, string if error)
  */
 
 /**

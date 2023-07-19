@@ -20,8 +20,7 @@ const loop_tests = () => {
             continue;
         }
 
-        if (cmd.run_terminal)
-        {
+        if (cmd.run_terminal) {
             running_cmd = cmd;
             cmd.run_terminal.once('exit', () => {
                 running_cmd = null;
@@ -47,11 +46,10 @@ export class Cmd_path extends Test_info {
         if (this.start)
             return new Date() - this.start;
 
-        let sum = running_cmd.running_time()||0;
+        let sum = running_cmd.running_time() || 0;
         let i = running_queue.indexOf(this.abs_path);
-        for (let j = 0; j <= i; j++)
-        {
-            sum += all_files.get(running_queue[j])?.avg||0;
+        for (let j = 0; j <= i; j++) {
+            sum += all_files.get(running_queue[j])?.avg || 0;
         }
         return sum;
     }
@@ -60,7 +58,7 @@ export class Cmd_path extends Test_info {
         return !!this.run_terminal;
     }
 
-    get scheduled_run(){
+    get scheduled_run() {
         return this.is_running || running_queue.includes(this.abs_path);
     }
 
@@ -73,6 +71,7 @@ export class Cmd_path extends Test_info {
         });
         this.run_terminal.once('spawn', () => {
             this.start = new Date();
+            this.after_path_changed();
         });
         this.run_terminal.once('exit', async ({err, std}) => {
             this.run_terminal = null;
@@ -85,6 +84,7 @@ export class Cmd_path extends Test_info {
                 ...err && {error: err},
             };
             await this.db.runs.insertAsync(doc);
+            this.after_path_changed();
         });
 
         return this.avg;
@@ -92,7 +92,7 @@ export class Cmd_path extends Test_info {
 
     async run() {
         if (!this._is_test())
-            throw new Error('Not a test');
+            return;
 
         if (running_queue.includes(this.abs_path))
             return -1;
@@ -102,10 +102,11 @@ export class Cmd_path extends Test_info {
 
         running_queue.push(this.abs_path);
         loop_tests();
+        return true;
     }
 
     async stop() {
-        this.run_terminal?.write_signal('kill');
+        return this.run_terminal?.write_signal('kill');
     }
 
     async add_to_ignore(ignore_reason) {
@@ -116,12 +117,14 @@ export class Cmd_path extends Test_info {
             file: this.relative_path,
             ignore_reason,
         });
+        return true;
     }
 
     async remove_from_ignore() {
         await this.db.ignore.removeAsync({
             file: this.relative_path,
         }, {multi: true});
+        return true;
     }
 
     async check_code_style() {
@@ -139,7 +142,7 @@ export class Cmd_path extends Test_info {
         this.code_style_terminal.once('exit', ({err, std}) => {
             this.code_style_terminal = null;
             std = std.flatMap(x => x[0].split('\n')).filter(x => x.endsWith(': OK'))
-            this.last_code_style_check = std.length ? std[0] : undefined;
+            this.last_code_style_check = std.length ? std[0] : true;
         });
         return true;
     }
@@ -150,6 +153,8 @@ export class Cmd_path extends Test_info {
             json.types.push('running');
         if (this.scheduled_run)
             json.ETA = this.running_time();
+        if (this.last_code_style_check)
+            json.code_style = this.last_code_style_check;
         return json;
     }
 }

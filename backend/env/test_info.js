@@ -2,8 +2,8 @@ import fs from 'fs';
 import {Path_base} from "./path_base.js";
 import {get_db} from "../utils.js";
 import {maxBy} from "../../lib/utils.js";
+import {Build_path} from "./build_path.js";
 
-const props = 'avg fail success is_selenium is_mocha is_ignored last_error last_run_date'.split(' ');
 const not_null_reduce = arr=>arr.find(Boolean);
 const sum_reduce = arr => arr.filter(Number.isFinite).reduce((p, c) => p + c, 0);
 const avg_reduce = arr => {
@@ -15,17 +15,62 @@ const avg_reduce = arr => {
 export class Test_info extends Path_base {
     constructor(...props) {
         super(...props);
+    }
 
-        this._setup_tree_prop('is_selenium');
-        this._setup_tree_prop('is_mocha');
-        this._setup_tree_prop('is_ignored');
+    get is_selenium(){
+        return this._get('_is_selenium');
+    }
+    set is_selenium(value){
+        return this._set_w_notify('_is_selenium', value);
+    }
 
-        this._setup_tree_prop('avg', avg_reduce);
-        this._setup_tree_prop('fail', sum_reduce);
-        this._setup_tree_prop('success', sum_reduce);
+    get is_mocha(){
+        return this._get('_is_mocha');
+    }
+    set is_mocha(value){
+        return this._set_w_notify('_is_mocha', value);
+    }
 
-        this._setup_tree_prop('last_error', not_null_reduce);
-        this._setup_tree_prop('last_run_date', maxBy);
+    get is_ignored(){
+        return this._get('_is_ignored');
+    }
+    set is_ignored(value){
+        return this._set_w_notify('_is_ignored', value);
+    }
+
+    get avg(){
+        return this._get('_avg', avg_reduce);
+    }
+    set avg(value){
+        return this._set_w_notify('_avg', value);
+    }
+
+    get fail(){
+        return this._get('_fail', sum_reduce);
+    }
+    set fail(value){
+        return this._set_w_notify('_fail', value);
+    }
+
+    get success(){
+        return this._get('_success', sum_reduce);
+    }
+    set success(value){
+        return this._set_w_notify('_success', value);
+    }
+
+    get last_error(){
+        return this._get('_last_error', not_null_reduce);
+    }
+    set last_error(value){
+        return this._set_w_notify('_last_error', value);
+    }
+
+    get last_run_date(){
+        return this._get('_last_run_date', maxBy);
+    }
+    set last_run_date(value){
+        return this._set_w_notify('_last_run_date', value);
     }
 
     /**
@@ -134,12 +179,22 @@ export class Test_info extends Path_base {
 
     toJSON() {
         let json = super.toJSON();
-        for (let prop of props) {
-            let val = this[prop];
-            const types = 'string boolean object';
-            if (types.includes(typeof val) || Number.isFinite(val))
-                json[prop] = val;
-        }
+        if (this.is_selenium)
+            json.types.push('selenium');
+        if (this.is_mocha)
+            json.types.push('mocha');
+        if (this.is_ignored)
+            json.types.push('ignored');
+        if (Number.isFinite(this.avg))
+            json.avg = this.avg;
+        if (Number.isFinite(this.success))
+            json.success = this.success;
+        if (Number.isFinite(this.fail))
+            json.fail = this.fail;
+        if (this.last_error)
+            json.last_error = this.last_error;
+        if (this.last_run_date instanceof Date)
+            json.last_run_date = this.last_run_date;
         return json;
     }
 }

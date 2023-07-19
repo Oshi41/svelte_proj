@@ -3,7 +3,9 @@ import {glob} from 'glob';
 import path from "path";
 import {watch} from "chokidar";
 import {date_format, maxBy, mls} from "../../lib/utils.js";
+import {Cvs_path} from "./cvs_path.js";
 
+// TODO test
 export class Build_path extends Path_base {
     constructor(...props) {
         super(...props);
@@ -19,7 +21,8 @@ export class Build_path extends Path_base {
         const built_today = new Set([date - offset, new Date() - offset]
             .map(x => date_format(x, 'yyyy-MM-dd'))).size == 1;
         const name = path.basename(path.dirname(file)).split('.')[1];
-        Object.assign(watcher.build_meta, {date, built_today, name});
+        watcher.build_meta = {date, built_today, name};
+        this.after_path_changed();
     }
 
     async recache_builds() {
@@ -43,10 +46,10 @@ export class Build_path extends Path_base {
             }
 
             if (!was && now) {
-                let watcher = Object.assign(watch(file, {
+                let watcher = watch(file, {
                     interval: 300,
                     alwaysStat: true,
-                }), {build_meta: {}});
+                });
                 watcher.on('change', (path1, stat) => {
                     this.update_meta(watcher, stat);
                 });
@@ -57,5 +60,23 @@ export class Build_path extends Path_base {
 
     async _zon_init() {
         await super._zon_init();
+        this.builds = new Map();
+        await this.recache_builds();
+
+        this._interval = setInterval(this.recache_builds.bind(this),
+            mls.min);
+    }
+
+    toJSON() {
+        let json = super.toJSON();
+        if (this.builds?.size)
+        {
+            json.build_meta = {};
+            for (let {build_meta} of Array.from(this.builds.values())) {
+                if (!build_meta) continue;
+                json.build_meta[build_meta.name] = build_meta;
+            }
+        }
+        return json;
     }
 }
